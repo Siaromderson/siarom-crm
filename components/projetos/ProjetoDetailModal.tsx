@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Drawer, GlassButton, GlassInput, GlassSelect, GlassTextarea, Label, Badge } from "@/components/ui/glass";
 import {
   Key, FileText, Link2, Paperclip, Trash2, Eye, EyeOff, Copy, Check, Calendar, Globe, Phone, Mail, Lock,
+  type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { atualizarProjeto, deletarProjeto } from "@/lib/actions/projects";
@@ -293,7 +294,7 @@ function ItemForm({ onSubmit, pending }: { onSubmit: (e: React.FormEvent<HTMLFor
 
 /* Campo individual com ícone de copiar + show/hide para senha */
 function CopyField({ icon: Icon, label, value, secret = false }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   label: string; value: string; secret?: boolean;
 }) {
   const [show, setShow] = useState(false);

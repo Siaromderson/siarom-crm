@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/format";
-import { X } from "lucide-react";
+import { X, type LucideIcon } from "lucide-react";
 import { useEffect, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 export function GlassCard({ className, ...p }: HTMLAttributes<HTMLDivElement>) {
@@ -57,7 +57,7 @@ export function Badge({ children, tone = "blue" }: { children: ReactNode; tone?:
 
 /* Tile colorido (KPI com ícone) */
 export function StatTile({ icon: Icon, label, value, hint, tone = "emerald" }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   label: string; value: string; hint?: string;
   tone?: "emerald" | "blue" | "violet" | "amber" | "red" | "rose";
 }) {

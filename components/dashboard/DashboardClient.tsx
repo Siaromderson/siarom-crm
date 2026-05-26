@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar, Legend, PieChart, Pie, Cell,
 } from "recharts";
-import { Wallet, Users, Receipt, TrendingUp, Briefcase, BarChart3, XCircle } from "lucide-react";
+import { Wallet, Users, Receipt, TrendingUp, Briefcase, BarChart3, XCircle, type LucideIcon } from "lucide-react";
 import { KANBAN_STAGES, POS_VENDA_STAGES, isDescartado, type Project } from "@/types/database";
 import { REALIZATION_PCT, realizationOf, sumRealization, sumDescartados } from "@/lib/realization";
 
@@ -39,7 +39,7 @@ const ACCENTS: Record<string, { bar: string; icon: string; iconBg: string; ring:
 
 /** KPI com Atual vs Previsto e barra de progresso */
 function DualKpi({ icon: Icon, label, atual, previsto, accent }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   label: string; atual: number; previsto: number; accent: keyof typeof ACCENTS;
 }) {
   const c = ACCENTS[accent];
@@ -71,7 +71,7 @@ function DualKpi({ icon: Icon, label, atual, previsto, accent }: {
 }
 
 function SimpleKpi({ icon: Icon, label, value, hint, accent }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   label: string; value: string; hint?: string; accent: keyof typeof ACCENTS;
 }) {
   const c = ACCENTS[accent];
