@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+html, body { height: 100%; }
+
+body {
+  @apply text-slate-800;
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+/* Cards clean: branco, borda fina cinza, sombra mínima */
+.card, .glass {
+  @apply rounded-xl bg-white border border-slate-200/80;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.card-hover, .glass-hover {
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.card-hover:hover, .glass-hover:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 14px -6px rgba(15, 23, 42, 0.08);
+}
+
+/* Inputs clean */
+input, select, textarea {
+  @apply bg-white border border-slate-200 text-slate-800 rounded-lg px-3 py-2 outline-none placeholder:text-slate-400 transition;
+}
+input:focus, select:focus, textarea:focus {
+  @apply ring-2 ring-emerald-500/15 border-emerald-500;
+}
+
+/* Login: branco com toque verde discreto */
+.bg-login {
+  background:
+    radial-gradient(700px 380px at 50% -10%, rgba(16,185,129,0.10), transparent 60%),
+    #ffffff;
+}
+
+/* Modal — backdrop com blur só onde precisa */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeIn .15s ease-out;
+}
+.modal-panel {
+  position: relative;
+  animation: zoomIn .18s ease-out;
+}
+@keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes zoomIn  { from { opacity: 0; transform: translateY(6px) scale(.985) } to { opacity: 1; transform: none } }
+@keyframes slideInRight { from { transform: translateX(100%); opacity: .6 } to { transform: translateX(0); opacity: 1 } }
+
+/* Título: só o nome com a cor da logo, sem gradiente exagerado */
+.title-grad {
+  @apply text-emerald-700 font-semibold;
+}
+
+/* Scrollbar discreta */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
