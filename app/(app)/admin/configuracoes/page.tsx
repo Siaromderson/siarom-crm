@@ -12,7 +12,7 @@ export default async function Page() {
         <p className="text-sm text-slate-500">Valores padrão usados pela calculadora e novos projetos.</p>
       </div>
       <GlassCard>
-        <form action={salvarDefaults} className="space-y-4">
+        <form action={async (fd) => { "use server"; await salvarDefaults(fd); }} className="space-y-4">
           <div className="grid md:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="comissao">% Comissão padrão</Label>
