@@ -81,7 +81,7 @@ export function UsuariosClient({ usuarios }: { usuarios: Profile[] }) {
             {usuarios.map((u) => (
               <tr key={u.id} className="border-t border-white/5">
                 <td className="px-4 py-2">
-                  <form action={(fd) => atualizar(u.id, fd)} className="flex gap-2 items-center" id={`f-${u.id}`}>
+                  <form action={(fd: FormData) => atualizar(u.id, fd)} className="flex gap-2 items-center" id={`f-${u.id}`}>
                     <input name="nome" defaultValue={u.nome} className="bg-transparent border-none p-0 focus:ring-0 w-40" />
                   </form>
                 </td>
