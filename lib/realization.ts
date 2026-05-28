@@ -10,6 +10,7 @@ export const REALIZATION_PCT: Record<KanbanStage, number> = {
   contrato_assinado: 0,
   pagamento_entrada: 50,
   // pós-venda — entrada já caiu (50%) até o pagamento final
+  kickoff: 50,
   implementacao: 50,
   finalizado: 50,
   fase_testes: 50,

@@ -24,6 +24,6 @@ export async function requireSession() {
 
 export async function requireAdmin() {
   const { profile } = await requireSession();
-  if (profile.role !== "admin") redirect("/calculadora");
+  if (profile.role !== "admin") redirect("/tarefas");
   return profile;
 }

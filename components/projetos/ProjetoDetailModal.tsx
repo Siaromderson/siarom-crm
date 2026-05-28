@@ -11,10 +11,14 @@ import { atualizarProjeto, deletarProjeto } from "@/lib/actions/projects";
 import { criarItem, deletarItem } from "@/lib/actions/items";
 import { calcularDivisao } from "@/lib/calc";
 import { brl } from "@/lib/format";
+import { calcFaseTestes, calcPrazoEntrega, fmtData } from "@/lib/testes";
 import { ResumoCalculo } from "@/components/calculadora/ResumoCalculo";
+import { ChecklistPanel } from "@/components/projetos/ChecklistPanel";
+import { UploadDropzone, ArquivosList } from "@/components/arquivos/ArquivosList";
 import {
-  KANBAN_STAGES, ITEM_TIPOS, FUNIS, FUNIL_DE, stagesDoFunil,
-  type ProjectItem, type Project, type Funil, type ItemTipo,
+  KANBAN_STAGES, PROJETO_FUNIL_STAGES, ITEM_TIPOS,
+  type ProjectItem, type Project, type ItemTipo,
+  type ChecklistKey, type ProjectFile, type Cliente,
 } from "@/types/database";
 
 const iconByTipo = { credencial: Key, anotacao: FileText, link: Link2, arquivo: Paperclip } as const;
@@ -32,45 +36,73 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
   const router = useRouter();
   const open = !!project;
   const [items, setItems] = useState<ProjectItem[]>([]);
+  const [checklist, setChecklist] = useState<Set<ChecklistKey>>(new Set());
+  const [arquivos, setArquivos] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<"info" | "items">("info");
+  const [tab, setTab] = useState<"info" | "checklist" | "arquivos" | "items">("info");
   const [pending, start] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
 
   // form state
-  const [cliente, setCliente] = useState(""); const [site, setSite] = useState(""); const [tel, setTel] = useState("");
+  const [cliente, setCliente] = useState(""); const [clienteId, setClienteId] = useState("");
+  const [site, setSite] = useState(""); const [tel, setTel] = useState("");
   const [desc, setDesc] = useState(""); const [reuniao, setReuniao] = useState("");
   const [total, setTotal] = useState(0); const [com, setCom] = useState(20); const [imp, setImp] = useState(15.5);
-  const [funil, setFunil] = useState<Funil>("vendas");
-  const [stage, setStage] = useState<Project["kanban_stage"]>("reuniao_agendada");
+  const [stage, setStage] = useState<Project["kanban_stage"]>("geracao_proposta");
+  const [testesIni, setTestesIni] = useState<string>("");
+  const [testesDias, setTestesDias] = useState<number | "">("");
+  const [prazoEntrega, setPrazoEntrega] = useState<string>("");
+  const [clientes, setClientes] = useState<Pick<Cliente, "id" | "nome" | "email" | "telefone" | "site">[]>([]);
   const r = useMemo(() => calcularDivisao(total, com, imp), [total, com, imp]);
-  const etapas = useMemo(() => stagesDoFunil(funil), [funil]);
 
   useEffect(() => {
     if (!project) return;
-    setCliente(project.cliente_nome); setSite(project.site_url ?? ""); setTel(project.telefone ?? "");
+    setCliente(project.cliente_nome); setClienteId(project.cliente_id ?? "");
+    setSite(project.site_url ?? ""); setTel(project.telefone ?? "");
     setDesc(project.descricao_automacao ?? ""); setReuniao(toLocalInput(project.reuniao_em));
     setTotal(project.valor_total); setCom(project.taxa_comissao); setImp(project.taxa_imposto);
-    setStage(project.kanban_stage); setFunil(FUNIL_DE(project.kanban_stage));
-    setTab("info"); setErro(null);
+    setStage(project.kanban_stage);
+    setTestesIni(project.testes_iniciado_em ?? "");
+    setTestesDias(project.testes_dias_total ?? "");
+    setPrazoEntrega(project.prazo_entrega ?? "");
+    setErro(null);
 
     setLoading(true);
     const supabase = createClient();
-    supabase.from("siarom_crm_project_items")
-      .select("*")
-      .eq("project_id", project.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => { setItems((data ?? []) as ProjectItem[]); setLoading(false); });
-  }, [project]);
+    Promise.all([
+      supabase.from("siarom_crm_project_items").select("*").eq("project_id", project.id).order("created_at", { ascending: false }),
+      supabase.from("siarom_crm_project_checklist").select("key").eq("project_id", project.id),
+      supabase.from("siarom_crm_files").select("*").eq("owner_type", "projeto").eq("owner_id", project.id).order("created_at", { ascending: false }),
+      supabase.from("siarom_crm_clientes").select("id, nome, email, telefone, site").order("nome"),
+    ]).then(([itemsRes, clRes, filesRes, clientesRes]) => {
+      setItems((itemsRes.data ?? []) as ProjectItem[]);
+      setChecklist(new Set(((clRes.data ?? []) as { key: ChecklistKey }[]).map((r) => r.key)));
+      setArquivos((filesRes.data ?? []) as ProjectFile[]);
+      setClientes((clientesRes.data ?? []) as Pick<Cliente, "id" | "nome" | "email" | "telefone" | "site">[]);
+      setLoading(false);
+    });
+  }, [project?.id]);
+
+  const vincularCliente = (id: string) => {
+    setClienteId(id);
+    const c = clientes.find((x) => x.id === id);
+    if (c) {
+      setCliente(c.nome);
+      if (c.telefone) setTel(c.telefone);
+      if (c.site) setSite(c.site);
+    }
+  };
+
+  const recarregarArquivos = async () => {
+    if (!project) return;
+    const supabase = createClient();
+    const { data } = await supabase.from("siarom_crm_files")
+      .select("*").eq("owner_type", "projeto").eq("owner_id", project.id)
+      .order("created_at", { ascending: false });
+    setArquivos((data ?? []) as ProjectFile[]);
+  };
 
   if (!open || !project) return null;
-
-  // Quando muda o funil, ajusta etapa para a primeira do funil escolhido
-  const trocarFunil = (f: Funil) => {
-    setFunil(f);
-    const novas = stagesDoFunil(f);
-    if (!novas.some((s) => s.id === stage)) setStage(novas[0].id);
-  };
 
   const salvar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -132,15 +164,18 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
       </>
     }>
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-slate-200 -mx-6 px-6 sticky top-0 bg-white z-10">
-        <button onClick={() => setTab("info")}
-                className={`px-3 py-2 text-sm border-b-2 -mb-px transition ${tab === "info" ? "border-emerald-500 text-emerald-700 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
-          Informações
-        </button>
-        <button onClick={() => setTab("items")}
-                className={`px-3 py-2 text-sm border-b-2 -mb-px transition ${tab === "items" ? "border-emerald-500 text-emerald-700 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
-          Items & Credenciais <span className="ml-1 text-xs text-slate-400">({items.length})</span>
-        </button>
+      <div className="flex gap-1 mb-6 border-b border-slate-200 dark:border-neutral-800 -mx-6 px-6 sticky top-0 bg-white dark:bg-neutral-950 z-10 overflow-x-auto">
+        {[
+          { id: "info", label: "Informações" },
+          { id: "checklist", label: `Checklist (${checklist.size}/8)` },
+          { id: "arquivos", label: `Arquivos (${arquivos.length})` },
+          { id: "items", label: `Credenciais (${items.length})` },
+        ].map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
+                  className={`px-3 py-2 text-sm border-b-2 -mb-px transition whitespace-nowrap ${tab === t.id ? "border-emerald-500 text-emerald-700 dark:text-emerald-300 font-medium" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-neutral-200"}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {tab === "info" && (
@@ -148,8 +183,15 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
           <section>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Cliente</div>
             <div className="space-y-3">
-              <div><Label htmlFor="cliente_nome">Nome</Label>
-                <GlassInput id="cliente_nome" name="cliente_nome" value={cliente} onChange={(e) => setCliente(e.target.value)} required /></div>
+              <div>
+                <Label htmlFor="cliente_id">Vincular a cliente existente</Label>
+                <GlassSelect id="cliente_id" name="cliente_id" value={clienteId} onChange={(e) => vincularCliente(e.target.value)}>
+                  <option value="">— não vinculado (manter manual) —</option>
+                  {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </GlassSelect>
+              </div>
+              <div><Label htmlFor="cliente_nome">Nome do cliente (display)</Label>
+                <GlassInput id="cliente_nome" name="cliente_nome" value={cliente} onChange={(e) => setCliente(e.target.value)} /></div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="site_url"><span className="inline-flex items-center gap-1.5"><Globe size={13} /> Site</span></Label>
@@ -168,24 +210,66 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
             <div className="space-y-3">
               <div><Label htmlFor="descricao_automacao">Descrição da automação</Label>
                 <GlassTextarea id="descricao_automacao" name="descricao_automacao" value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="reuniao_em"><span className="inline-flex items-center gap-1.5"><Calendar size={13} /> Data/hora reunião</span></Label>
                   <GlassInput id="reuniao_em" name="reuniao_em" type="datetime-local" value={reuniao} onChange={(e) => setReuniao(e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="funil">Funil</Label>
-                  <GlassSelect id="funil" value={funil} onChange={(e) => trocarFunil(e.target.value as Funil)}>
-                    {FUNIS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-                  </GlassSelect>
-                </div>
-                <div>
                   <Label htmlFor="kanban_stage">Etapa</Label>
                   <GlassSelect id="kanban_stage" name="kanban_stage" value={stage} onChange={(e) => setStage(e.target.value as Project["kanban_stage"])}>
-                    {etapas.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    {PROJETO_FUNIL_STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                   </GlassSelect>
                 </div>
               </div>
+
+              {(() => {
+                const prazo = calcPrazoEntrega(prazoEntrega || null);
+                const tone = !prazo ? "" :
+                  prazo.status === "atrasado" ? "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-red-700 dark:text-red-300"
+                  : prazo.status === "hoje" || prazo.status === "proximo" ? "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300";
+                return (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="prazo_entrega"><span className="inline-flex items-center gap-1.5"><Calendar size={13} /> Prazo de entrega</span></Label>
+                      <GlassInput id="prazo_entrega" name="prazo_entrega" type="date" value={prazoEntrega} onChange={(e) => setPrazoEntrega(e.target.value)} />
+                    </div>
+                    {prazo && (
+                      <div className={`self-end text-sm rounded-md border px-3 py-2 ${tone}`}>
+                        <b>{prazo.label}</b> · entrega em <b>{fmtData(prazo.fimEm)}</b>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {stage === "fase_testes" && (() => {
+                const info = calcFaseTestes(testesIni || null, typeof testesDias === "number" ? testesDias : null);
+                const toneCls = info?.status === "atrasado"
+                  ? "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-red-700 dark:text-red-300"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300";
+                return (
+                  <div className="mt-3 p-3 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 space-y-3">
+                    <div className="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-semibold">⏱️ Fase de testes</div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="testes_iniciado_em">Iniciada em</Label>
+                        <GlassInput id="testes_iniciado_em" name="testes_iniciado_em" type="date" value={testesIni} onChange={(e) => setTestesIni(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label htmlFor="testes_dias_total">Duração (dias)</Label>
+                        <GlassInput id="testes_dias_total" name="testes_dias_total" type="number" min={1} step={1} placeholder="ex: 7" value={testesDias} onChange={(e) => setTestesDias(e.target.value === "" ? "" : parseInt(e.target.value, 10) || "")} />
+                      </div>
+                    </div>
+                    {info && (
+                      <div className={`text-sm rounded-md border px-3 py-2 ${toneCls}`}>
+                        <b>{info.label}</b> · termina em <b>{fmtData(info.fimEm)}</b>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </section>
 
@@ -208,7 +292,7 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
 
           {erro && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-2">{erro}</div>}
 
-          <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100 -mx-6 px-6 pb-2 sticky bottom-0 bg-white">
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100 dark:border-neutral-800 -mx-6 px-6 pb-2 sticky bottom-0 bg-white dark:bg-neutral-950">
             <GlassButton type="submit" disabled={pending}>{pending ? "Salvando..." : "Salvar alterações"}</GlassButton>
             <GlassButton type="button" variant="ghost" onClick={onClose}>Cancelar</GlassButton>
             <div className="flex-1" />
@@ -222,12 +306,38 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
         </form>
       )}
 
+      {tab === "checklist" && (
+        <div className="space-y-3">
+          <div className="text-sm text-slate-500 dark:text-neutral-400">
+            Checklist de etapas obrigatórias. Clique pra marcar/desmarcar.
+          </div>
+          <ChecklistPanel projectId={project.id} done={checklist} />
+        </div>
+      )}
+
+      {tab === "arquivos" && (
+        <div className="space-y-4">
+          <UploadDropzone ownerType="projeto" ownerId={project.id} onUploaded={recarregarArquivos} />
+          <ArquivosList arquivos={arquivos} onDelete={recarregarArquivos} />
+        </div>
+      )}
+
       {tab === "items" && (
         <div className="space-y-5">
           <ItemForm onSubmit={adicionarItem} pending={pending} />
+          {erro && (
+            <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-md p-3">
+              <b>Erro ao salvar:</b> {erro}
+              {erro.toLowerCase().includes("column") && (
+                <div className="text-xs mt-1 opacity-80">
+                  Provavelmente a MIGRATION_005 não foi aplicada no Supabase.
+                </div>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             {loading && <div className="text-sm text-slate-400">Carregando...</div>}
-            {!loading && items.length === 0 && <div className="text-sm text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-lg">Nenhum item ainda.</div>}
+            {!loading && items.length === 0 && <div className="text-sm text-slate-400 text-center py-6 border border-dashed border-slate-200 dark:border-neutral-800 rounded-lg">Nenhum item ainda.</div>}
             {items.map((it) => <ItemRow key={it.id} item={it} onDelete={removerItem} />)}
           </div>
         </div>
@@ -240,7 +350,7 @@ function ItemForm({ onSubmit, pending }: { onSubmit: (e: React.FormEvent<HTMLFor
   const [tipo, setTipo] = useState<ItemTipo>("credencial");
 
   return (
-    <form onSubmit={onSubmit} className="p-4 rounded-lg border border-slate-200 bg-slate-50/60 space-y-3">
+    <form onSubmit={onSubmit} className="p-4 rounded-lg border border-slate-200 dark:border-neutral-800 bg-slate-50/60 dark:bg-neutral-900/40 space-y-3">
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
           <Label htmlFor="tipo">Tipo</Label>
@@ -305,17 +415,17 @@ function CopyField({ icon: Icon, label, value, secret = false }: {
   };
   const display = secret && !show ? "•".repeat(Math.min(value.length, 16)) : value;
   return (
-    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-slate-50 border border-slate-200 group/copy hover:border-emerald-300 transition">
-      <Icon size={13} className="text-slate-400 shrink-0" />
-      <span className="text-[10px] uppercase tracking-wider text-slate-400 shrink-0 w-14">{label}</span>
-      <span className="text-sm text-slate-700 font-mono break-all flex-1 min-w-0">{display}</span>
+    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 group/copy hover:border-emerald-300 dark:hover:border-emerald-700 transition">
+      <Icon size={13} className="text-slate-400 dark:text-neutral-500 shrink-0" />
+      <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-neutral-500 shrink-0 w-14">{label}</span>
+      <span className="text-sm text-slate-700 dark:text-neutral-200 font-mono break-all flex-1 min-w-0">{display}</span>
       {secret && (
-        <button type="button" onClick={() => setShow((v) => !v)} className="p-1 rounded hover:bg-slate-200 text-slate-500" title={show ? "Ocultar" : "Mostrar"}>
+        <button type="button" onClick={() => setShow((v) => !v)} className="p-1 rounded hover:bg-slate-200 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title={show ? "Ocultar" : "Mostrar"}>
           {show ? <EyeOff size={13} /> : <Eye size={13} />}
         </button>
       )}
-      <button type="button" onClick={copy} className="p-1 rounded hover:bg-slate-200 text-slate-500" title="Copiar">
-        {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+      <button type="button" onClick={copy} className="p-1 rounded hover:bg-slate-200 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title="Copiar">
+        {copied ? <Check size={13} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={13} />}
       </button>
     </div>
   );
@@ -331,16 +441,16 @@ function ItemRow({ item, onDelete }: { item: ProjectItem; onDelete: (id: string)
   };
 
   return (
-    <div className="border border-slate-200 rounded-lg p-3 bg-white hover:border-emerald-300 transition">
+    <div className="border border-slate-200 dark:border-neutral-800 rounded-lg p-3 bg-white dark:bg-neutral-950 hover:border-emerald-300 dark:hover:border-emerald-700 transition">
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
           <Icon size={18} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="font-semibold text-slate-800 text-sm">{item.titulo}</div>
-            <button onClick={copyTitle} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Copiar nome">
-              {copiedTitle ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+            <div className="font-semibold text-slate-800 dark:text-neutral-100 text-sm">{item.titulo}</div>
+            <button onClick={copyTitle} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300" title="Copiar nome">
+              {copiedTitle ? <Check size={12} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={12} />}
             </button>
             <Badge tone="slate">{item.tipo}</Badge>
           </div>
@@ -352,7 +462,7 @@ function ItemRow({ item, onDelete }: { item: ProjectItem; onDelete: (id: string)
             {item.conteudo && <div className="sm:col-span-2"><CopyField icon={FileText} label="nota" value={item.conteudo} /></div>}
           </div>
         </div>
-        <button onClick={() => onDelete(item.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500 shrink-0" title="Excluir">
+        <button onClick={() => onDelete(item.id)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40 text-red-500 dark:text-red-400 shrink-0" title="Excluir">
           <Trash2 size={15} />
         </button>
       </div>

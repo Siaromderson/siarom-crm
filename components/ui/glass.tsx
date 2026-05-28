@@ -16,8 +16,8 @@ export function GlassButton({
       : variant === "danger"
       ? "bg-red-600 hover:bg-red-700 text-white"
       : variant === "outline"
-      ? "bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-      : "bg-white border border-slate-200 hover:bg-slate-50 text-slate-700";
+      ? "bg-white dark:bg-neutral-900 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-neutral-800"
+      : "bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 hover:bg-slate-50 dark:hover:bg-neutral-800 text-slate-700 dark:text-neutral-200";
   return (
     <button
       {...p}
@@ -40,17 +40,17 @@ export function GlassSelect({ className, ...p }: SelectHTMLAttributes<HTMLSelect
 }
 
 export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
-  return <label htmlFor={htmlFor} className="text-xs font-medium text-slate-600 mb-1 block">{children}</label>;
+  return <label htmlFor={htmlFor} className="text-xs font-medium text-slate-600 dark:text-neutral-300 mb-1 block">{children}</label>;
 }
 
 export function Badge({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" | "green" | "amber" | "red" | "slate" | "purple" }) {
   const map = {
-    blue:   "bg-emerald-50 text-emerald-700 border-emerald-200",
-    green:  "bg-emerald-50 text-emerald-700 border-emerald-200",
-    amber:  "bg-amber-50 text-amber-700 border-amber-200",
-    red:    "bg-red-50 text-red-700 border-red-200",
-    slate:  "bg-slate-50 text-slate-700 border-slate-200",
-    purple: "bg-violet-50 text-violet-700 border-violet-200",
+    blue:   "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900",
+    green:  "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900",
+    amber:  "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900",
+    red:    "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900",
+    slate:  "bg-slate-50 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 border-slate-200 dark:border-neutral-700",
+    purple: "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-900",
   };
   return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-medium", map[tone])}>{children}</span>;
 }
@@ -96,19 +96,19 @@ export function Drawer({ open, onClose, title, children, widthClass = "w-full md
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]" />
+      <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]" />
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "relative h-full bg-white border-l border-slate-200 shadow-2xl overflow-y-auto flex flex-col",
+          "relative h-full bg-white dark:bg-neutral-950 border-l border-slate-200 dark:border-neutral-800 shadow-2xl overflow-y-auto flex flex-col",
           "animate-[slideInRight_.25s_cubic-bezier(.2,.8,.2,1)]",
           widthClass
         )}
         style={{ animationFillMode: "both" }}
       >
-        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-          <div className="text-base font-semibold text-slate-800 flex items-center gap-3 min-w-0">{title}</div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition shrink-0">
+        <div className="sticky top-0 z-10 bg-white/95 dark:bg-neutral-950/95 backdrop-blur border-b border-slate-200 dark:border-neutral-800 px-6 py-4 flex items-center justify-between">
+          <div className="text-base font-semibold text-slate-800 dark:text-neutral-100 flex items-center gap-3 min-w-0">{title}</div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 hover:text-slate-800 dark:hover:text-neutral-100 transition shrink-0">
             <X size={18} />
           </button>
         </div>
@@ -139,8 +139,8 @@ export function Modal({ open, onClose, title, children, size = "md" }: {
       <div className={cn("modal-panel card w-full p-6", widths)} onClick={(e) => e.stopPropagation()}>
         {(title || true) && (
           <div className="flex items-center justify-between mb-4">
-            <div className="text-lg font-semibold text-slate-800">{title}</div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-500 hover:text-slate-800 transition">
+            <div className="text-lg font-semibold text-slate-800 dark:text-neutral-100">{title}</div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-neutral-800 text-slate-500 hover:text-slate-800 dark:hover:text-neutral-100 transition">
               <X size={18} />
             </button>
           </div>

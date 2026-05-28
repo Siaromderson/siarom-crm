@@ -4,27 +4,41 @@ import { useRouter } from "next/navigation";
 import { GlassCard, GlassButton, GlassInput, GlassSelect, GlassTextarea, Label } from "@/components/ui/glass";
 import { ResumoCalculo } from "@/components/calculadora/ResumoCalculo";
 import { calcularDivisao } from "@/lib/calc";
-import { KANBAN_STAGES, type Project } from "@/types/database";
+import { PROJETO_FUNIL_STAGES, type Cliente, type Project } from "@/types/database";
 import { criarProjeto, atualizarProjeto, deletarProjeto } from "@/lib/actions/projects";
 
 export function ProjetoForm({
   defaults,
   inicial,
+  clientes = [],
 }: {
   defaults: { comissao: number; imposto: number };
   inicial?: Project;
+  clientes?: Pick<Cliente, "id" | "nome" | "telefone" | "site">[];
 }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [cliente, setCliente] = useState(inicial?.cliente_nome ?? "");
+  const [clienteId, setClienteId] = useState(inicial?.cliente_id ?? "");
   const [site, setSite] = useState(inicial?.site_url ?? "");
   const [tel, setTel] = useState(inicial?.telefone ?? "");
+
+  const vincular = (id: string) => {
+    setClienteId(id);
+    const c = clientes.find((x) => x.id === id);
+    if (c) {
+      setCliente(c.nome);
+      if (c.telefone) setTel(c.telefone);
+      if (c.site) setSite(c.site);
+    }
+  };
   const [desc, setDesc] = useState(inicial?.descricao_automacao ?? "");
   const [total, setTotal] = useState<number>(inicial?.valor_total ?? 0);
   const [com, setCom] = useState<number>(inicial?.taxa_comissao ?? defaults.comissao);
   const [imp, setImp] = useState<number>(inicial?.taxa_imposto ?? defaults.imposto);
-  const [stage, setStage] = useState(inicial?.kanban_stage ?? "reuniao_agendada");
+  const [stage, setStage] = useState(inicial?.kanban_stage ?? "geracao_proposta");
+  const [prazoEntrega, setPrazoEntrega] = useState(inicial?.prazo_entrega ?? "");
 
   const r = useMemo(() => calcularDivisao(total, com, imp), [total, com, imp]);
 
@@ -54,9 +68,18 @@ export function ProjetoForm({
   return (
     <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <GlassCard className="space-y-4">
+        {clientes.length > 0 && (
+          <div>
+            <Label htmlFor="cliente_id">Vincular a cliente existente</Label>
+            <GlassSelect id="cliente_id" name="cliente_id" value={clienteId} onChange={(e) => vincular(e.target.value)}>
+              <option value="">— não vinculado —</option>
+              {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </GlassSelect>
+          </div>
+        )}
         <div>
           <Label htmlFor="cliente_nome">Cliente</Label>
-          <GlassInput id="cliente_nome" name="cliente_nome" required value={cliente} onChange={(e) => setCliente(e.target.value)} />
+          <GlassInput id="cliente_nome" name="cliente_nome" value={cliente} onChange={(e) => setCliente(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -86,11 +109,17 @@ export function ProjetoForm({
             <GlassInput id="taxa_imposto" name="taxa_imposto" type="number" min={0} max={100} step="0.1" value={imp} onChange={(e) => setImp(parseFloat(e.target.value) || 0)} />
           </div>
         </div>
-        <div>
-          <Label htmlFor="kanban_stage">Etapa Kanban</Label>
-          <GlassSelect id="kanban_stage" name="kanban_stage" value={stage} onChange={(e) => setStage(e.target.value as Project["kanban_stage"])}>
-            {KANBAN_STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </GlassSelect>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="kanban_stage">Etapa Kanban</Label>
+            <GlassSelect id="kanban_stage" name="kanban_stage" value={stage} onChange={(e) => setStage(e.target.value as Project["kanban_stage"])}>
+              {PROJETO_FUNIL_STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </GlassSelect>
+          </div>
+          <div>
+            <Label htmlFor="prazo_entrega">Prazo de entrega</Label>
+            <GlassInput id="prazo_entrega" name="prazo_entrega" type="date" value={prazoEntrega} onChange={(e) => setPrazoEntrega(e.target.value)} />
+          </div>
         </div>
 
         {erro && <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-md p-2">{erro}</div>}

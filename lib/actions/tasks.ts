@@ -5,9 +5,34 @@ import { requireSession } from "@/lib/auth";
 import type { TaskStatus } from "@/types/database";
 
 export async function criarTarefa(formData: FormData) {
+  const { user, profile } = await requireSession();
+  const supabase = createClient();
+  const assigneeRaw = (formData.get("assignee_id") as string) || null;
+  // Usuário comum só cria tarefa pra si mesmo
+  const assignee_id = profile.role === "admin" ? assigneeRaw : user.id;
+  const payload = {
+    titulo: String(formData.get("titulo") || "").trim(),
+    descricao: String(formData.get("descricao") || "").trim() || null,
+    project_id: (formData.get("project_id") as string) || null,
+    cliente_id: (formData.get("cliente_id") as string) || null,
+    assignee_id,
+    prioridade: (formData.get("prioridade") as string) || "media",
+    status: (formData.get("status") as TaskStatus) || "a_fazer",
+    tipo: (formData.get("tipo") as string) || "manual",
+    due_date: (formData.get("due_date") as string) || null,
+  };
+  if (!payload.titulo) return { error: "Título obrigatório." };
+  const { error } = await supabase.from("siarom_crm_tasks").insert(payload);
+  if (error) return { error: error.message };
+  revalidatePath("/tarefas");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function atualizarTarefa(id: string, formData: FormData) {
   await requireSession();
   const supabase = createClient();
-  const payload = {
+  const patch = {
     titulo: String(formData.get("titulo") || "").trim(),
     descricao: String(formData.get("descricao") || "").trim() || null,
     project_id: (formData.get("project_id") as string) || null,
@@ -16,10 +41,11 @@ export async function criarTarefa(formData: FormData) {
     status: (formData.get("status") as TaskStatus) || "a_fazer",
     due_date: (formData.get("due_date") as string) || null,
   };
-  if (!payload.titulo) return { error: "Título obrigatório." };
-  const { error } = await supabase.from("siarom_crm_tasks").insert(payload);
+  if (!patch.titulo) return { error: "Título obrigatório." };
+  const { error } = await supabase.from("siarom_crm_tasks").update(patch).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/tarefas");
+  revalidatePath("/dashboard");
   return { ok: true };
 }
 

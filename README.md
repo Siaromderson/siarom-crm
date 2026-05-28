@@ -14,6 +14,16 @@ CRM em Next.js 14 + Supabase com calculadora de aquisição, projetos, kanban ar
 2. Abra **SQL Editor** e cole o conteúdo de [SETUP.sql](./SETUP.sql). Execute.
 3. Em **Authentication → Providers**, mantenha **Email** ativo e desative **Enable sign-ups** se quiser bloquear cadastro externo (já bloqueamos na UI).
 
+> ⚠️ **MIGRATIONS — RODE NESTA ORDEM, UMA POR VEZ:**
+> 1. [SETUP.sql](./SETUP.sql) (schema inicial)
+> 2. [FIX_RLS.sql](./FIX_RLS.sql) (correção da recursão)
+> 3. [MIGRATION_002.sql](./MIGRATION_002.sql) — novas etapas kanban + tabela de items
+> 4. [MIGRATION_003.sql](./MIGRATION_003.sql) — site/telefone
+> 5. [MIGRATION_004.sql](./MIGRATION_004.sql) — campo `reuniao_em` ⚠️ **se pular, salvar projeto quebra**
+> 6. [MIGRATION_005.sql](./MIGRATION_005.sql) — email/senha/link em credenciais
+> 7. [MIGRATION_006.sql](./MIGRATION_006.sql) — leads, clientes, checklist, follow-up
+> 8. [MIGRATION_007.sql](./MIGRATION_007.sql) — arquivos + Supabase Storage
+
 > **Observação sobre o nome das tabelas:** todas usam prefixo `siarom_crm_` (com underscore). Hífen (`-`) em nomes de tabela Postgres exige aspas duplas em toda query, então o padrão SQL é underscore. As tabelas são: `siarom_crm_profiles`, `siarom_crm_projects`, `siarom_crm_tasks`, `siarom_crm_app_settings`.
 
 ### 2) .env.local

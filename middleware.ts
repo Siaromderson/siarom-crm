@@ -28,8 +28,24 @@ export async function middleware(req: NextRequest) {
   }
   if (user && isLogin) {
     const r = url.clone();
-    r.pathname = "/calculadora";
+    r.pathname = "/";
     return NextResponse.redirect(r);
+  }
+
+  // Restringe não-admin a /tarefas
+  if (user && !isPublic) {
+    const { data: profile } = await supabase
+      .from("siarom_crm_profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single<{ role: string }>();
+    const isAdmin = profile?.role === "admin";
+    const allowed = url.pathname.startsWith("/tarefas");
+    if (!isAdmin && !allowed) {
+      const r = url.clone();
+      r.pathname = "/tarefas";
+      return NextResponse.redirect(r);
+    }
   }
   return res;
 }

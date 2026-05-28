@@ -5,10 +5,10 @@ import type { DivisaoResultado } from "@/lib/calc";
 
 export function ResumoCalculo({ r }: { r: DivisaoResultado }) {
   const tiles = [
-    { label: "Valor total", v: brl(r.total), p: "100%", value: "text-slate-900" },
-    { label: `Sócio (${pct(r.pctComissao)})`, v: brl(r.comissao), p: pct(r.pctComissao), value: "text-slate-900" },
-    { label: `Imposto (${pct(r.pctImposto)})`, v: brl(r.imposto), p: pct(r.pctImposto), value: "text-slate-900" },
-    { label: "Seu lucro", v: brl(r.lucro), p: pct(r.pctLucro), value: "text-emerald-600" },
+    { label: "Valor total", v: brl(r.total), p: "100%", value: "text-slate-900 dark:text-neutral-100" },
+    { label: `Sócio (${pct(r.pctComissao)})`, v: brl(r.comissao), p: pct(r.pctComissao), value: "text-amber-700 dark:text-amber-300" },
+    { label: `Imposto (${pct(r.pctImposto)})`, v: brl(r.imposto), p: pct(r.pctImposto), value: "text-red-700 dark:text-red-300" },
+    { label: "Seu lucro", v: brl(r.lucro), p: pct(r.pctLucro), value: "text-emerald-700 dark:text-emerald-300" },
   ];
 
   const total = r.total || 1;

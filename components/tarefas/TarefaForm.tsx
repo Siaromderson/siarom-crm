@@ -1,7 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { GlassButton, GlassInput, GlassSelect, GlassTextarea, Label, Modal } from "@/components/ui/glass";
+import { GlassButton, GlassInput, GlassSelect, Label, Modal } from "@/components/ui/glass";
+import { SlashEditor } from "@/components/ui/SlashEditor";
 import { criarTarefa } from "@/lib/actions/tasks";
 import { TASK_STATUSES, type Profile, type Project } from "@/types/database";
 
@@ -14,6 +15,7 @@ export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel }: {
   const [open, setOpen] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [descricao, setDescricao] = useState("");
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,6 +25,7 @@ export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel }: {
       const r = await criarTarefa(fd);
       if (r?.error) return setErro(r.error);
       setOpen(false);
+      setDescricao("");
       router.refresh();
     });
   };
@@ -47,7 +50,9 @@ export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel }: {
           </div>
           <div>
             <Label htmlFor="descricao">Descrição</Label>
-            <GlassTextarea id="descricao" name="descricao" />
+            <input type="hidden" name="descricao" value={descricao} />
+            <SlashEditor value={descricao} onChange={setDescricao} />
+            <div className="text-[11px] text-slate-400 mt-1">Dica: digite <b>/</b> para criar uma lista de tarefas.</div>
           </div>
           <div className="grid md:grid-cols-4 gap-3">
             {podeEscolherResponsavel && (
