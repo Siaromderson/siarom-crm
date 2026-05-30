@@ -1,11 +1,12 @@
 "use client";
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo } from "react";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { GlassCard, Badge, GlassButton } from "@/components/ui/glass";
 import { TarefaForm } from "./TarefaForm";
 import { TarefaDetailDrawer } from "./TarefaDetailDrawer";
 import { atualizarStatusTarefa, deletarTarefa } from "@/lib/actions/tasks";
+import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
 import { TASK_STATUSES, type Profile, type Project, type Task, type TaskStatus, type Prioridade } from "@/types/database";
 
 const toneByPrio: Record<Prioridade, "blue" | "amber" | "red" | "slate"> = {
@@ -77,7 +78,7 @@ export function TarefasClient({
   const [tasks, setTasks] = useState(initial);
   const [open, setOpen] = useState<Task | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [, start] = useTransition();
+  const { run } = useOptimisticAction();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
 
@@ -86,23 +87,38 @@ export function TarefasClient({
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
 
-  const onDragEnd = async (e: DragEndEvent) => {
+  const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
     const id = String(e.active.id);
     const ns = e.over?.id as TaskStatus | undefined;
     if (!ns) return;
     const cur = tasks.find((t) => t.id === id);
     if (!cur || cur.status === ns) return;
-    setTasks((l) => l.map((t) => (t.id === id ? { ...t, status: ns } : t)));
-    await atualizarStatusTarefa(id, ns);
+    const prev = cur.status;
+    run({
+      apply: () => setTasks((l) => l.map((t) => (t.id === id ? { ...t, status: ns } : t))),
+      rollback: () => setTasks((l) => l.map((t) => (t.id === id ? { ...t, status: prev } : t))),
+      action: () => atualizarStatusTarefa(id, ns),
+      errorMessage: "Não foi possível mover a tarefa. Tente de novo.",
+    });
   };
 
   const remover = (id: string) => {
     if (!confirm("Excluir tarefa?")) return;
-    start(async () => {
-      await deletarTarefa(id);
-      setTasks((l) => l.filter((t) => t.id !== id));
-      router.refresh();
+    const idx = tasks.findIndex((t) => t.id === id);
+    if (idx === -1) return;
+    const removed = tasks[idx];
+    run({
+      apply: () => setTasks((l) => l.filter((t) => t.id !== id)),
+      rollback: () =>
+        setTasks((l) => {
+          const next = [...l];
+          next.splice(Math.min(idx, next.length), 0, removed);
+          return next;
+        }),
+      action: () => deletarTarefa(id),
+      errorMessage: "Não foi possível excluir a tarefa. Tente de novo.",
+      onSuccess: () => router.refresh(),
     });
   };
 

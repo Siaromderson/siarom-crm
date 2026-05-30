@@ -9,6 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { atualizarProjeto, deletarProjeto } from "@/lib/actions/projects";
 import { criarItem, deletarItem } from "@/lib/actions/items";
+import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
 import { calcularDivisao } from "@/lib/calc";
 import { brl } from "@/lib/format";
 import { calcFaseTestes, calcPrazoEntrega, fmtData } from "@/lib/testes";
@@ -41,6 +42,7 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"info" | "checklist" | "arquivos" | "items">("info");
   const [pending, start] = useTransition();
+  const { run } = useOptimisticAction();
   const [erro, setErro] = useState<string | null>(null);
 
   // form state
@@ -143,10 +145,22 @@ export function ProjetoDetailModal({ project, onClose }: { project: Project | nu
     });
   };
 
-  const removerItem = async (id: string) => {
+  const removerItem = (id: string) => {
     if (!confirm("Excluir este item?")) return;
-    await deletarItem(id);
-    setItems((arr) => arr.filter((i) => i.id !== id));
+    const idx = items.findIndex((i) => i.id === id);
+    if (idx === -1) return;
+    const removed = items[idx];
+    run({
+      apply: () => setItems((arr) => arr.filter((i) => i.id !== id)),
+      rollback: () =>
+        setItems((arr) => {
+          const next = [...arr];
+          next.splice(Math.min(idx, next.length), 0, removed);
+          return next;
+        }),
+      action: () => deletarItem(id),
+      errorMessage: "Não foi possível excluir o item. Tente de novo.",
+    });
   };
 
   const stageLabel = KANBAN_STAGES.find((s) => s.id === project.kanban_stage)?.label;

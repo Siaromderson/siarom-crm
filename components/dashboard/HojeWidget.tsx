@@ -1,34 +1,45 @@
 "use client";
-import { useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GlassCard, Badge, GlassButton } from "@/components/ui/glass";
 import { CheckCircle2, ListChecks, Phone, Calendar } from "lucide-react";
 import { atualizarStatusTarefa } from "@/lib/actions/tasks";
 import { marcarFollowupFeito } from "@/lib/actions/clientes";
 import { marcarFollowupLeadFeito } from "@/lib/actions/leads";
+import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
 import type { TarefaDoDia } from "@/lib/followups";
 
 const fmt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export function HojeWidget({ itens }: { itens: TarefaDoDia[] }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const { run, pending } = useOptimisticAction();
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
   const marcarFeito = (it: TarefaDoDia) => {
-    start(async () => {
-      if (it.tipo === "task") {
-        const id = it.id.replace("task:", "");
-        await atualizarStatusTarefa(id, "concluido");
-      } else if (it.tipo === "followup") {
-        if (it.id.startsWith("followup-lead:")) {
-          await marcarFollowupLeadFeito(it.id.replace("followup-lead:", ""));
-        } else {
-          await marcarFollowupFeito(it.id.replace("followup:", ""));
+    run({
+      apply: () => setHidden((prev) => new Set(prev).add(it.id)),
+      rollback: () =>
+        setHidden((prev) => {
+          const next = new Set(prev);
+          next.delete(it.id);
+          return next;
+        }),
+      action: () => {
+        if (it.tipo === "task") {
+          return atualizarStatusTarefa(it.id.replace("task:", ""), "concluido");
         }
-      }
-      router.refresh();
+        if (it.id.startsWith("followup-lead:")) {
+          return marcarFollowupLeadFeito(it.id.replace("followup-lead:", ""));
+        }
+        return marcarFollowupFeito(it.id.replace("followup:", ""));
+      },
+      errorMessage: "Não foi possível concluir. Tente de novo.",
+      onSuccess: () => router.refresh(),
     });
   };
+
+  const visiveis = itens.filter((it) => !hidden.has(it.id));
 
   const iconOf = (t: TarefaDoDia["tipo"]) => t === "task" ? ListChecks : t === "followup" ? Phone : Calendar;
   const toneOf = (t: TarefaDoDia["tipo"]) => t === "task" ? "slate" : t === "followup" ? "amber" : "green";
@@ -38,16 +49,16 @@ export function HojeWidget({ itens }: { itens: TarefaDoDia[] }) {
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-sm font-semibold text-slate-700 dark:text-neutral-200">📅 Hoje</div>
-          <div className="text-xs text-slate-500 dark:text-neutral-400">{itens.length} item(ns) — tarefas, follow-ups e reuniões</div>
+          <div className="text-xs text-slate-500 dark:text-neutral-400">{visiveis.length} item(ns) — tarefas, follow-ups e reuniões</div>
         </div>
       </div>
       <div className="space-y-2">
-        {itens.length === 0 && (
+        {visiveis.length === 0 && (
           <div className="text-sm text-slate-400 text-center py-6 border border-dashed border-slate-200 dark:border-neutral-800 rounded-lg">
             Sem pendências pra hoje. ✨
           </div>
         )}
-        {itens.map((it) => {
+        {visiveis.map((it) => {
           const Icon = iconOf(it.tipo);
           const isReuniao = it.tipo === "reuniao";
           return (

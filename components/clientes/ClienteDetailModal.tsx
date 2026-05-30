@@ -5,6 +5,7 @@ import { Drawer, GlassButton, GlassInput, GlassTextarea, Label, Badge } from "@/
 import { Calendar, Globe, Phone, Mail, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { atualizarCliente, deletarCliente, marcarFollowupFeito } from "@/lib/actions/clientes";
+import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
 import type { Cliente, Project, Task } from "@/types/database";
 import { brl } from "@/lib/format";
 
@@ -20,6 +21,7 @@ export function ClienteDetailModal({ cliente, onClose }: { cliente: Cliente | nu
   const open = !!cliente;
   const [tab, setTab] = useState<"info" | "projetos" | "tarefas">("info");
   const [pending, start] = useTransition();
+  const { run } = useOptimisticAction();
   const [erro, setErro] = useState<string | null>(null);
   const [projetos, setProjetos] = useState<Project[]>([]);
   const [tarefas, setTarefas] = useState<Task[]>([]);
@@ -67,9 +69,12 @@ export function ClienteDetailModal({ cliente, onClose }: { cliente: Cliente | nu
   };
 
   const concluirFollowup = () => {
-    start(async () => {
-      await marcarFollowupFeito(cliente.id);
-      router.refresh(); onClose();
+    run({
+      apply: () => onClose(),
+      rollback: () => {},
+      action: () => marcarFollowupFeito(cliente.id),
+      errorMessage: "Não foi possível marcar follow-up. Tente de novo.",
+      onSuccess: () => router.refresh(),
     });
   };
 

@@ -5,6 +5,7 @@ import { GlassButton } from "@/components/ui/glass";
 import { ProjetoDetailModal } from "@/components/projetos/ProjetoDetailModal";
 import { CHECKLIST_KEYS, PROJETO_FUNIL_STAGES, type ChecklistKey, type KanbanStage, type Project } from "@/types/database";
 import { moverEtapa } from "@/lib/actions/projects";
+import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
 import { brl } from "@/lib/format";
 import { calcFaseTestes } from "@/lib/testes";
 
@@ -80,6 +81,7 @@ export function KanbanBoard({ projetos, checklists = {} }: {
   const [list, setList] = useState(projetos);
   const [open, setOpen] = useState<Project | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const { run } = useOptimisticAction();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const activeProject = activeId ? list.find((p) => p.id === activeId) ?? null : null;
 
@@ -90,15 +92,20 @@ export function KanbanBoard({ projetos, checklists = {} }: {
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
 
-  const onDragEnd = async (e: DragEndEvent) => {
+  const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
     const id = String(e.active.id);
     const newStage = e.over?.id as KanbanStage | undefined;
     if (!newStage) return;
     const cur = list.find((p) => p.id === id);
     if (!cur || cur.kanban_stage === newStage) return;
-    setList((l) => l.map((p) => (p.id === id ? { ...p, kanban_stage: newStage } : p)));
-    await moverEtapa(id, newStage);
+    const prevStage = cur.kanban_stage;
+    run({
+      apply: () => setList((l) => l.map((p) => (p.id === id ? { ...p, kanban_stage: newStage } : p))),
+      rollback: () => setList((l) => l.map((p) => (p.id === id ? { ...p, kanban_stage: prevStage } : p))),
+      action: () => moverEtapa(id, newStage),
+      errorMessage: "Não foi possível mover o projeto. Tente de novo.",
+    });
   };
 
   return (

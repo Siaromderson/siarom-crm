@@ -7,6 +7,7 @@ import { ArrowRightCircle, Globe, Phone, Briefcase, Calendar, CheckCircle2 } fro
 import { LEAD_STAGES, type KanbanStage, type Lead } from "@/types/database";
 // (LEAD_STAGES inclui reunião agendada + funil de vendas + descartes)
 import { moverEtapaLead, criarLead, atualizarLead, deletarLead, converterLeadEmCliente, marcarFollowupLeadFeito } from "@/lib/actions/leads";
+import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
 import { brl } from "@/lib/format";
 
 function Card({ l, onOpen, projetos }: { l: Lead; onOpen: (l: Lead) => void; projetos?: { id: string; cliente_nome: string }[] }) {
@@ -80,16 +81,22 @@ export function LeadsBoard({ leads, projetosByCliente = {} }: { leads: Lead[]; p
   const [newOpen, setNewOpen] = useState(false);
   const [pending, start] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
+  const { run } = useOptimisticAction();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  const onDragEnd = async (e: DragEndEvent) => {
+  const onDragEnd = (e: DragEndEvent) => {
     const id = String(e.active.id);
     const ns = e.over?.id as KanbanStage | undefined;
     if (!ns) return;
     const cur = list.find((l) => l.id === id);
     if (!cur || cur.kanban_stage === ns) return;
-    setList((l) => l.map((x) => (x.id === id ? { ...x, kanban_stage: ns } : x)));
-    await moverEtapaLead(id, ns);
+    const prev = cur.kanban_stage;
+    run({
+      apply: () => setList((l) => l.map((x) => (x.id === id ? { ...x, kanban_stage: ns } : x))),
+      rollback: () => setList((l) => l.map((x) => (x.id === id ? { ...x, kanban_stage: prev } : x))),
+      action: () => moverEtapaLead(id, ns),
+      errorMessage: "Não foi possível mover o lead. Tente de novo.",
+    });
   };
 
   const criar = (e: React.FormEvent<HTMLFormElement>) => {
@@ -118,9 +125,22 @@ export function LeadsBoard({ leads, projetosByCliente = {} }: { leads: Lead[]; p
 
   const remover = () => {
     if (!open || !confirm("Excluir este lead?")) return;
-    start(async () => {
-      await deletarLead(open.id);
-      setOpen(null); router.refresh();
+    const lead = open;
+    const idx = list.findIndex((l) => l.id === lead.id);
+    run({
+      apply: () => {
+        setList((l) => l.filter((x) => x.id !== lead.id));
+        setOpen(null);
+      },
+      rollback: () =>
+        setList((l) => {
+          const next = [...l];
+          next.splice(idx >= 0 ? Math.min(idx, next.length) : next.length, 0, lead);
+          return next;
+        }),
+      action: () => deletarLead(lead.id),
+      errorMessage: "Não foi possível excluir o lead. Tente de novo.",
+      onSuccess: () => router.refresh(),
     });
   };
 
@@ -218,7 +238,16 @@ export function LeadsBoard({ leads, projetosByCliente = {} }: { leads: Lead[]; p
 
             {open.proximo_followup_em && (
               <GlassButton type="button" variant="outline"
-                           onClick={() => start(async () => { await marcarFollowupLeadFeito(open.id); setOpen(null); router.refresh(); })}
+                           onClick={() => {
+                             const id = open.id;
+                             run({
+                               apply: () => setOpen(null),
+                               rollback: () => {},
+                               action: () => marcarFollowupLeadFeito(id),
+                               errorMessage: "Não foi possível marcar follow-up. Tente de novo.",
+                               onSuccess: () => router.refresh(),
+                             });
+                           }}
                            disabled={pending}>
                 <CheckCircle2 size={16} /> Follow-up feito (marca interação agora)
               </GlassButton>
