@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, Calculator, Briefcase, ListChecks,
+  LayoutDashboard, Calculator, Briefcase, ListChecks, CalendarDays,
   Users, Settings, LogOut, Target, UserCircle2, FileSignature, Receipt, GraduationCap,
   type LucideIcon,
 } from "lucide-react";
@@ -16,7 +16,10 @@ type Item = { href: string; label: string; icon: LucideIcon };
 
 const nav = (role: Role): Item[] => {
   if (role !== "admin") {
-    return [{ href: "/tarefas", label: "Tarefas", icon: ListChecks }];
+    return [
+      { href: "/tarefas", label: "Tarefas", icon: ListChecks },
+      { href: "/agenda", label: "Agenda", icon: CalendarDays },
+    ];
   }
   return [
     { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
@@ -26,6 +29,7 @@ const nav = (role: Role): Item[] => {
     { href: "/projetos", label: "Projetos", icon: Briefcase },
     { href: "/mentoria", label: "Mentoria", icon: GraduationCap },
     { href: "/tarefas", label: "Tarefas", icon: ListChecks },
+    { href: "/agenda", label: "Agenda", icon: CalendarDays },
     { href: "/contratos", label: "Contratos", icon: FileSignature },
     { href: "/nfes", label: "NFes", icon: Receipt },
     { href: "/admin/usuarios", label: "Usuários", icon: Users },

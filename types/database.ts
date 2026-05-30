@@ -274,3 +274,22 @@ export interface ProjectItem {
 }
 
 export interface AppDefaults { comissao: number; imposto: number; }
+
+export type AgendaEventoTipo = "reuniao" | "tarefa" | "lembrete" | "outro";
+export const AGENDA_EVENTO_TIPOS: { id: AgendaEventoTipo; label: string }[] = [
+  { id: "reuniao",  label: "Reunião" },
+  { id: "tarefa",   label: "Tarefa" },
+  { id: "lembrete", label: "Lembrete" },
+  { id: "outro",    label: "Outro" },
+];
+
+export interface AgendaEventDb {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  tipo: AgendaEventoTipo;
+  data: string;        // "yyyy-mm-dd"
+  hora: string | null; // "HH:mm:ss" ou null
+  owner_id: string;
+  created_at: string;
+}

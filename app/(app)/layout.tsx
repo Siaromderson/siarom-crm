@@ -2,6 +2,9 @@ import { Sidebar } from "@/components/sidebar";
 import { ToastProvider } from "@/components/ui/toast";
 import { requireSession } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireSession();
   return (
