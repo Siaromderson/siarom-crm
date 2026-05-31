@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
+import { resolverMime } from "@/lib/mime";
 import type { FileCategoria, FileOwnerType } from "@/types/database";
 
 const BUCKET = "siarom-files";
@@ -27,10 +28,12 @@ export async function uploadArquivo(formData: FormData) {
   const uniq = crypto.randomUUID();
   const path = `${ownerType}/${ownerId}/${categoria}/${uniq}-${safeName}`;
 
+  const mime = resolverMime(file.type, ext.toLowerCase());
+
   const admin = supabaseAdmin();
   const buffer = Buffer.from(await file.arrayBuffer());
   const { error: upErr } = await admin.storage.from(BUCKET).upload(path, buffer, {
-    contentType: file.type || `application/${ext}`,
+    contentType: mime,
     upsert: false,
   });
   if (upErr) return { error: `Upload: ${upErr.message}` };
@@ -41,7 +44,7 @@ export async function uploadArquivo(formData: FormData) {
     owner_id: ownerId,
     categoria,
     nome: file.name,
-    mime: file.type || null,
+    mime,
     size_bytes: file.size,
     storage_path: path,
     uploaded_by: user.id,

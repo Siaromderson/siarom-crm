@@ -2,7 +2,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { FileText, FileSignature, Receipt, Paperclip, Download, Trash2, FileEdit, Eye, X, Loader2 } from "lucide-react";
+import { FileSignature, Receipt, Paperclip, Download, Trash2, FileEdit, Eye, X } from "lucide-react";
 import { GlassButton, Badge } from "@/components/ui/glass";
 import { deletarArquivo, getDownloadUrl, uploadArquivo } from "@/lib/actions/files";
 import { brl } from "@/lib/format";
@@ -140,34 +140,28 @@ export function ArquivosList({ arquivos, onDelete, ownerLabels }: {
 }
 
 function FilePreviewModal({ file, onClose }: { file: ProjectFile | null; onClose: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    if (!file) { setUrl(null); setErro(null); return; }
-    let cancelled = false;
-    setUrl(null); setErro(null);
-    getDownloadUrl(file.id).then((r) => {
-      if (cancelled) return;
-      if (r?.url) setUrl(r.url);
-      else setErro(r?.error ?? "Falha ao gerar URL.");
-    });
+    if (!file) return;
     const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onEsc);
-    return () => { cancelled = true; window.removeEventListener("keydown", onEsc); };
+    return () => window.removeEventListener("keydown", onEsc);
   }, [file, onClose]);
 
   if (!file || !mounted) return null;
 
-  const mime = file.mime ?? "";
+  // URL com Content-Type corrigido via API route (resolve arquivos antigos).
+  const url = `/api/files/${file.id}/stream`;
+
   const ext = (file.nome.split(".").pop() ?? "").toLowerCase();
-  const isImage = mime.startsWith("image/") || ["png","jpg","jpeg","gif","webp","svg","bmp","avif"].includes(ext);
+  const mime = file.mime ?? "";
+  const isImage = mime.startsWith("image/") || ["png","jpg","jpeg","gif","webp","svg","bmp","avif","heic","heif"].includes(ext);
   const isPdf = mime === "application/pdf" || ext === "pdf";
-  const isVideo = mime.startsWith("video/") || ["mp4","webm","ogg","mov"].includes(ext);
-  const isAudio = mime.startsWith("audio/") || ["mp3","wav","ogg","m4a","aac"].includes(ext);
+  const isVideo = mime.startsWith("video/") || ["mp4","webm","mov","mkv","m4v","avi","ogv"].includes(ext);
+  const isAudio = mime.startsWith("audio/") || ["mp3","wav","ogg","m4a","aac","flac"].includes(ext);
   const isText = mime.startsWith("text/") || ["txt","md","csv","json","log","xml","yml","yaml"].includes(ext);
 
   return createPortal((
@@ -184,41 +178,37 @@ function FilePreviewModal({ file, onClose }: { file: ProjectFile | null; onClose
             <div className="font-medium text-sm text-slate-800 dark:text-neutral-100 truncate">{file.nome}</div>
             <div className="text-xs text-slate-500 dark:text-neutral-400">{mime || ext.toUpperCase()}</div>
           </div>
-          {url && (
-            <a href={url} target="_blank" rel="noreferrer"
-               className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title="Abrir em nova aba">
-              <Download size={16} />
-            </a>
-          )}
+          <a href={url} target="_blank" rel="noreferrer"
+             className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title="Abrir em nova aba">
+            <Download size={16} />
+          </a>
           <button onClick={onClose} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title="Fechar">
             <X size={18} />
           </button>
         </div>
         <div className="flex-1 overflow-auto bg-slate-50/60 dark:bg-neutral-900/40 flex items-center justify-center min-h-0">
-          {erro && <div className="text-sm text-red-600 dark:text-red-400 p-6">{erro}</div>}
-          {!url && !erro && <Loader2 className="animate-spin text-slate-400" size={28} />}
-          {url && isImage && (
+          {isImage && (
             <img src={url} alt={file.nome} className="max-w-full max-h-full object-contain" />
           )}
-          {url && isPdf && (
+          {isPdf && (
             <iframe src={url} title={file.nome} className="w-full h-full bg-white" />
           )}
-          {url && isVideo && (
-            <video src={url} controls className="max-w-full max-h-full" />
+          {isVideo && (
+            <video src={url} controls playsInline className="max-w-full max-h-full" />
           )}
-          {url && isAudio && (
+          {isAudio && (
             <audio src={url} controls className="w-full px-6" />
           )}
-          {url && isText && (
+          {isText && (
             <iframe src={url} title={file.nome} className="w-full h-full bg-white dark:bg-neutral-950" />
           )}
-          {url && !isImage && !isPdf && !isVideo && !isAudio && !isText && (
+          {!isImage && !isPdf && !isVideo && !isAudio && !isText && (
             <div className="flex flex-col items-center gap-3 p-8 text-center">
               <Paperclip size={36} className="text-slate-400" />
               <div className="text-sm text-slate-600 dark:text-neutral-300">Pré-visualização não suportada para este formato.</div>
               <a href={url} target="_blank" rel="noreferrer"
                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm">
-                <Download size={14} /> Baixar arquivo
+                <Download size={14} /> Abrir arquivo
               </a>
             </div>
           )}
