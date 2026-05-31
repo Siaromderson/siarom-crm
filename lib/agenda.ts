@@ -136,24 +136,87 @@ export async function getAgendaEventos(opts: { roleAdmin: boolean; userId: strin
   let evQ = supabase.from("siarom_crm_agenda_events").select("*");
   if (!opts.roleAdmin) evQ = evQ.eq("owner_id", opts.userId);
   const { data: eventos } = await evQ;
+
+  const hoje = new Date();
+  const janelaInicio = new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1);
+  const janelaFim = new Date(hoje.getFullYear() + 1, hoje.getMonth() + 1, 0);
+
   for (const ev of (eventos ?? []) as AgendaEventDb[]) {
+    const datas = expandirOcorrencias(ev, janelaInicio, janelaFim);
     const hasTime = !!ev.hora;
-    const dataIso = hasTime ? `${ev.data}T${ev.hora}` : ev.data;
-    out.push({
-      id: `evento:${ev.id}`,
-      tipo: "evento",
-      data: dataIso,
-      hasTime,
-      titulo: ev.titulo,
-      contexto: ev.descricao,
-      tone: EVENTO_TONE[ev.tipo],
-      href: null,
-      editavel: true,
-      eventoDbId: ev.id,
-      descricao: ev.descricao,
-      eventoTipo: ev.tipo,
-    });
+    for (const d of datas) {
+      const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dataIso = hasTime ? `${isoDate}T${ev.hora}` : isoDate;
+      out.push({
+        id: `evento:${ev.id}:${isoDate}`,
+        tipo: "evento",
+        data: dataIso,
+        hasTime,
+        titulo: ev.titulo,
+        contexto: ev.descricao,
+        tone: EVENTO_TONE[ev.tipo],
+        href: null,
+        editavel: true,
+        eventoDbId: ev.id,
+        descricao: ev.descricao,
+        eventoTipo: ev.tipo,
+        recorrencia: ev.recorrencia,
+        diasSemana: ev.recorrencia_dias_semana,
+        recorrenciaAte: ev.recorrencia_ate,
+      });
+    }
   }
 
   return out.sort((a, b) => a.data.localeCompare(b.data));
+}
+
+function expandirOcorrencias(ev: AgendaEventDb, janelaInicio: Date, janelaFim: Date): Date[] {
+  const anchor = parseEventoDate(ev.data);
+  const limite = ev.recorrencia_ate ? parseEventoDate(ev.recorrencia_ate) : janelaFim;
+  const fim = limite < janelaFim ? limite : janelaFim;
+  const inicio = anchor > janelaInicio ? anchor : janelaInicio;
+  const out: Date[] = [];
+
+  if (ev.recorrencia === "none" || !ev.recorrencia) {
+    if (anchor >= janelaInicio && anchor <= fim) out.push(anchor);
+    return out;
+  }
+
+  if (ev.recorrencia === "daily") {
+    const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
+    while (d <= fim) { out.push(new Date(d)); d.setDate(d.getDate() + 1); }
+    return out;
+  }
+
+  if (ev.recorrencia === "weekly") {
+    const dias = ev.recorrencia_dias_semana && ev.recorrencia_dias_semana.length
+      ? new Set(ev.recorrencia_dias_semana)
+      : new Set([anchor.getDay()]);
+    const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
+    while (d <= fim) {
+      if (d >= anchor && dias.has(d.getDay())) out.push(new Date(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  if (ev.recorrencia === "monthly") {
+    const d = new Date(anchor);
+    while (d <= fim) {
+      if (d >= janelaInicio) out.push(new Date(d));
+      d.setMonth(d.getMonth() + 1);
+    }
+    return out;
+  }
+
+  if (ev.recorrencia === "yearly") {
+    const d = new Date(anchor);
+    while (d <= fim) {
+      if (d >= janelaInicio) out.push(new Date(d));
+      d.setFullYear(d.getFullYear() + 1);
+    }
+    return out;
+  }
+
+  return out;
 }

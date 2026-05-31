@@ -1,12 +1,12 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, ListChecks, Truck, Beaker, Calendar, Phone, Star, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListChecks, Truck, Beaker, Calendar, Phone, Star, Plus, Repeat } from "lucide-react";
 import { GlassCard, GlassButton, GlassInput, GlassSelect, GlassTextarea, Label, Modal, Badge } from "@/components/ui/glass";
 import { parseEventoDate, type AgendaEvento, type AgendaTipo, type AgendaTone } from "@/lib/agenda-types";
 import { criarEvento, atualizarEvento, deletarEvento } from "@/lib/actions/agenda";
-import { AGENDA_EVENTO_TIPOS } from "@/types/database";
+import { AGENDA_EVENTO_TIPOS, AGENDA_RECORRENCIAS, DIAS_SEMANA, type AgendaRecorrencia } from "@/types/database";
 
 type Vista = "dia" | "semana" | "mes";
 
@@ -242,10 +242,12 @@ function VistaMes({
 }
 
 function ChipMini({ ev, onClick }: { ev: AgendaEvento; onClick: (ev: AgendaEvento) => void }) {
+  const repetindo = ev.recorrencia && ev.recorrencia !== "none";
   const inner = (
-    <div className={`text-[11px] px-1.5 py-0.5 rounded border truncate ${toneClass[ev.tone]}`}>
-      {ev.hasTime && <span className="font-mono mr-1 opacity-80">{fmtHora(ev.data)}</span>}
-      {ev.titulo}
+    <div className={`text-[11px] px-1.5 py-0.5 rounded border truncate flex items-center gap-1 ${toneClass[ev.tone]}`}>
+      {ev.hasTime && <span className="font-mono opacity-80">{fmtHora(ev.data)}</span>}
+      {repetindo && <Repeat size={9} className="opacity-70 shrink-0" />}
+      <span className="truncate">{ev.titulo}</span>
     </div>
   );
   if (ev.editavel) {
@@ -345,11 +347,15 @@ function EventoChip({ ev, compacto = false, onClick }: {
   ev: AgendaEvento; compacto?: boolean; onClick: (ev: AgendaEvento) => void;
 }) {
   const Icon = iconByTipo[ev.tipo];
+  const repetindo = ev.recorrencia && ev.recorrencia !== "none";
   const inner = (
     <div className={`flex items-start gap-2 rounded-lg border px-2 py-1.5 transition hover:shadow-sm ${toneClass[ev.tone]}`}>
       <Icon size={compacto ? 12 : 14} className="mt-0.5 shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className={`${compacto ? "text-[11px]" : "text-sm"} font-medium truncate`}>{ev.titulo}</div>
+        <div className={`${compacto ? "text-[11px]" : "text-sm"} font-medium truncate flex items-center gap-1`}>
+          <span className="truncate">{ev.titulo}</span>
+          {repetindo && <Repeat size={compacto ? 9 : 11} className="opacity-70 shrink-0" />}
+        </div>
         <div className={`flex items-center gap-2 ${compacto ? "text-[10px]" : "text-xs"} opacity-80 mt-0.5`}>
           {ev.hasTime && <span className="font-mono">{fmtHora(ev.data)}</span>}
           {ev.contexto && <span className="truncate">· {ev.contexto}</span>}
@@ -377,12 +383,35 @@ function EventoModal({ mode, onClose, onSaved }: {
 }) {
   const [pending, start] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
+  const [recorrencia, setRecorrencia] = useState<AgendaRecorrencia>("none");
+  const [diasSemana, setDiasSemana] = useState<Set<number>>(new Set());
 
   const isEdit = mode?.kind === "edit";
   const ev = mode?.kind === "edit" ? mode.ev : null;
   const dataInicial = mode?.kind === "create" ? mode.data : ev ? ev.data.slice(0, 10) : "";
   const horaInicial = ev?.hasTime ? fmtHora(ev.data) : "";
   const tipoInicial = ev?.eventoTipo ?? "outro";
+  const ateInicial = ev?.recorrenciaAte ?? "";
+
+  useEffect(() => {
+    if (!mode) return;
+    if (mode.kind === "edit") {
+      setRecorrencia(mode.ev.recorrencia ?? "none");
+      setDiasSemana(new Set(mode.ev.diasSemana ?? []));
+    } else {
+      setRecorrencia("none");
+      setDiasSemana(new Set());
+    }
+    setErro(null);
+  }, [mode]);
+
+  const toggleDia = (id: number) => {
+    setDiasSemana((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -438,6 +467,61 @@ function EventoModal({ mode, onClose, onSaved }: {
           <div>
             <Label htmlFor="descricao">Descrição</Label>
             <GlassTextarea id="descricao" name="descricao" defaultValue={ev?.descricao ?? ""} rows={3} />
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-neutral-800 pt-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="recorrencia">Repetir</Label>
+                <GlassSelect
+                  id="recorrencia"
+                  name="recorrencia"
+                  value={recorrencia}
+                  onChange={(e) => setRecorrencia(e.target.value as AgendaRecorrencia)}
+                >
+                  {AGENDA_RECORRENCIAS.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label}</option>
+                  ))}
+                </GlassSelect>
+              </div>
+              {recorrencia !== "none" && (
+                <div>
+                  <Label htmlFor="recorrencia_ate">Termina em (opcional)</Label>
+                  <GlassInput id="recorrencia_ate" name="recorrencia_ate" type="date" defaultValue={ateInicial} />
+                </div>
+              )}
+            </div>
+            {recorrencia === "weekly" && (
+              <div>
+                <Label>Dias da semana</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {DIAS_SEMANA.map((d) => {
+                    const ativo = diasSemana.has(d.id);
+                    return (
+                      <button
+                        type="button"
+                        key={d.id}
+                        onClick={() => toggleDia(d.id)}
+                        className={`w-9 h-9 rounded-full border text-xs font-medium transition ${
+                          ativo
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : "bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-400 hover:border-emerald-300"
+                        }`}
+                        title={d.label}
+                      >
+                        {d.short}
+                      </button>
+                    );
+                  })}
+                </div>
+                {Array.from(diasSemana).map((id) => (
+                  <input key={id} type="hidden" name="recorrencia_dias_semana" value={id} />
+                ))}
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  Vazio = usa o dia da semana da data inicial.
+                </p>
+              </div>
+            )}
           </div>
 
           {erro && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-2">{erro}</div>}

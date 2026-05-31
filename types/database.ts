@@ -283,6 +283,25 @@ export const AGENDA_EVENTO_TIPOS: { id: AgendaEventoTipo; label: string }[] = [
   { id: "outro",    label: "Outro" },
 ];
 
+export type AgendaRecorrencia = "none" | "daily" | "weekly" | "monthly" | "yearly";
+export const AGENDA_RECORRENCIAS: { id: AgendaRecorrencia; label: string }[] = [
+  { id: "none",    label: "Não se repete" },
+  { id: "daily",   label: "Todos os dias" },
+  { id: "weekly",  label: "Semanalmente" },
+  { id: "monthly", label: "Mensalmente" },
+  { id: "yearly",  label: "Anualmente" },
+];
+
+export const DIAS_SEMANA: { id: number; label: string; short: string }[] = [
+  { id: 0, label: "Domingo",       short: "D" },
+  { id: 1, label: "Segunda-feira", short: "S" },
+  { id: 2, label: "Terça-feira",   short: "T" },
+  { id: 3, label: "Quarta-feira",  short: "Q" },
+  { id: 4, label: "Quinta-feira",  short: "Q" },
+  { id: 5, label: "Sexta-feira",   short: "S" },
+  { id: 6, label: "Sábado",        short: "S" },
+];
+
 export interface AgendaEventDb {
   id: string;
   titulo: string;
@@ -290,6 +309,9 @@ export interface AgendaEventDb {
   tipo: AgendaEventoTipo;
   data: string;        // "yyyy-mm-dd"
   hora: string | null; // "HH:mm:ss" ou null
+  recorrencia: AgendaRecorrencia;
+  recorrencia_dias_semana: number[] | null;
+  recorrencia_ate: string | null; // "yyyy-mm-dd"
   owner_id: string;
   created_at: string;
 }

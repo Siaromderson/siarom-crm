@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { GlassCard, Badge, GlassButton } from "@/components/ui/glass";
 import { TarefaForm } from "./TarefaForm";
 import { TarefaDetailDrawer } from "./TarefaDetailDrawer";
@@ -13,12 +14,54 @@ const toneByPrio: Record<Prioridade, "blue" | "amber" | "red" | "slate"> = {
   baixa: "slate", media: "blue", alta: "amber", urgente: "red",
 };
 
+const PRIO_PESO: Record<Prioridade, number> = { urgente: 4, alta: 3, media: 2, baixa: 1 };
+
+type SortBy = "prioridade" | "prazo";
+type SortDir = "asc" | "desc";
+
+function ordenar(tasks: Task[], by: SortBy, dir: SortDir): Task[] {
+  const sinal = dir === "asc" ? 1 : -1;
+  const copia = [...tasks];
+  copia.sort((a, b) => {
+    if (by === "prioridade") {
+      return sinal * (PRIO_PESO[a.prioridade] - PRIO_PESO[b.prioridade]);
+      // asc: baixa → urgente | desc: urgente → baixa
+    }
+    // Tarefas sem prazo vão sempre pro fim, em qualquer direção
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return sinal * (new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+  });
+  return copia;
+}
+
 const previewDescricao = (s: string | null) =>
   (s ?? "")
     .split("\n")
     .map((l) => l.replace(/^\s*-\s*\[( |x|X)\]\s?/, (_m, c) => (c.toLowerCase() === "x" ? "✓ " : "○ ")))
     .join("\n")
     .trim();
+
+function SortChip({ ativo, dir, onClick, children }: {
+  ativo: boolean; dir: SortDir; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border transition ${
+        ativo
+          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300"
+          : "bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-400 hover:border-emerald-300"
+      }`}
+      title={ativo ? `${dir === "asc" ? "Crescente" : "Decrescente"} — clique para inverter` : "Ordenar por isto"}
+    >
+      {children}
+      {ativo && (dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+    </button>
+  );
+}
 
 function CardView({ t, dragging = false, overlay = false }: {
   t: Task; dragging?: boolean; overlay?: boolean;
@@ -78,7 +121,16 @@ export function TarefasClient({
   const [tasks, setTasks] = useState(initial);
   const [open, setOpen] = useState<Task | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>("prazo");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const { run } = useOptimisticAction();
+
+  const tasksOrdenadas = useMemo(() => ordenar(tasks, sortBy, sortDir), [tasks, sortBy, sortDir]);
+
+  const toggleSort = (by: SortBy) => {
+    if (sortBy === by) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortBy(by); setSortDir("asc"); }
+  };
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
 
@@ -129,7 +181,12 @@ export function TarefasClient({
           <GlassButton variant={view === "board" ? "primary" : "ghost"} onClick={() => setView("board")}>Board</GlassButton>
           <GlassButton variant={view === "lista" ? "primary" : "ghost"} onClick={() => setView("lista")}>Lista</GlassButton>
         </div>
-        <TarefaForm projetos={projetos} usuarios={usuarios} podeEscolherResponsavel={podeEscolherResponsavel} />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500 dark:text-neutral-400">Ordenar por</span>
+          <SortChip ativo={sortBy === "prazo"} dir={sortDir} onClick={() => toggleSort("prazo")}>Prazo</SortChip>
+          <SortChip ativo={sortBy === "prioridade"} dir={sortDir} onClick={() => toggleSort("prioridade")}>Prioridade</SortChip>
+          <TarefaForm projetos={projetos} usuarios={usuarios} podeEscolherResponsavel={podeEscolherResponsavel} />
+        </div>
       </div>
 
       {view === "board" ? (
@@ -137,7 +194,7 @@ export function TarefasClient({
           <div className="flex gap-4 overflow-x-auto pb-4">
             {TASK_STATUSES.map((s) => (
               <Column key={s.id} status={s.id} label={s.label}
-                      items={tasks.filter((t) => t.status === s.id)}
+                      items={tasksOrdenadas.filter((t) => t.status === s.id)}
                       onOpen={setOpen} />
             ))}
           </div>
@@ -160,7 +217,7 @@ export function TarefasClient({
               </tr>
             </thead>
             <tbody>
-              {tasks.map((t) => (
+              {tasksOrdenadas.map((t) => (
                 <tr key={t.id} className="border-t border-white/5 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition" onClick={() => setOpen(t)}>
                   <td className="px-4 py-2">{t.titulo}</td>
                   <td className="px-4 py-2 text-slate-400">{t.project_id ? mapProj[t.project_id] : "—"}</td>
@@ -173,7 +230,7 @@ export function TarefasClient({
                   </td>
                 </tr>
               ))}
-              {tasks.length === 0 && <tr><td colSpan={7} className="text-center text-slate-400 py-6">Nenhuma tarefa.</td></tr>}
+              {tasksOrdenadas.length === 0 && <tr><td colSpan={7} className="text-center text-slate-400 py-6">Nenhuma tarefa.</td></tr>}
             </tbody>
           </table>
         </GlassCard>

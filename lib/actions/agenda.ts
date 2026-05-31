@@ -2,9 +2,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
-import type { AgendaEventoTipo } from "@/types/database";
+import type { AgendaEventoTipo, AgendaRecorrencia } from "@/types/database";
 
 const TIPOS_VALIDOS: AgendaEventoTipo[] = ["reuniao", "tarefa", "lembrete", "outro"];
+const RECORRENCIAS_VALIDAS: AgendaRecorrencia[] = ["none", "daily", "weekly", "monthly", "yearly"];
 
 function parsePayload(formData: FormData) {
   const titulo = String(formData.get("titulo") || "").trim();
@@ -14,7 +15,19 @@ function parsePayload(formData: FormData) {
   const data = String(formData.get("data") || "").trim();              // "yyyy-mm-dd"
   const horaRaw = String(formData.get("hora") || "").trim();           // "" ou "HH:mm"
   const hora = horaRaw ? `${horaRaw}:00` : null;
-  return { titulo, descricao, tipo, data, hora };
+
+  const recRaw = String(formData.get("recorrencia") || "none") as AgendaRecorrencia;
+  const recorrencia: AgendaRecorrencia = RECORRENCIAS_VALIDAS.includes(recRaw) ? recRaw : "none";
+  const ateRaw = String(formData.get("recorrencia_ate") || "").trim();
+  const recorrencia_ate = ateRaw || null;
+  let recorrencia_dias_semana: number[] | null = null;
+  if (recorrencia === "weekly") {
+    const dias = formData.getAll("recorrencia_dias_semana")
+      .map((v) => Number(v))
+      .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+    recorrencia_dias_semana = dias.length ? Array.from(new Set(dias)).sort() : null;
+  }
+  return { titulo, descricao, tipo, data, hora, recorrencia, recorrencia_dias_semana, recorrencia_ate };
 }
 
 export async function criarEvento(formData: FormData) {
