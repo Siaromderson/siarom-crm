@@ -122,13 +122,13 @@ export function ArquivosList({ arquivos, onDelete, ownerLabels }: {
                 );
               })()}
             </div>
-            <button onClick={() => setPreview(f)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500" title="Visualizar">
+            <button type="button" onClick={() => setPreview(f)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500" title="Visualizar">
               <Eye size={15} />
             </button>
-            <button onClick={() => baixar(f.id)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500" title="Baixar">
+            <button type="button" onClick={() => baixar(f.id)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500" title="Baixar">
               <Download size={15} />
             </button>
-            <button onClick={() => remover(f.id)} disabled={pending} className="p-2 rounded hover:bg-red-50 text-red-500" title="Excluir">
+            <button type="button" onClick={() => remover(f.id)} disabled={pending} className="p-2 rounded hover:bg-red-50 text-red-500" title="Excluir">
               <Trash2 size={15} />
             </button>
           </div>
@@ -182,7 +182,7 @@ function FilePreviewModal({ file, onClose }: { file: ProjectFile | null; onClose
              className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title="Abrir em nova aba">
             <Download size={16} />
           </a>
-          <button onClick={onClose} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title="Fechar">
+          <button type="button" onClick={onClose} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400" title="Fechar">
             <X size={18} />
           </button>
         </div>
