@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, ListChecks, Truck, Beaker, Calendar, Phone, Star, Plus, Repeat } from "lucide-react";
 import { GlassCard, GlassButton, GlassInput, GlassSelect, GlassTextarea, Label, Modal, Badge } from "@/components/ui/glass";
 import { parseEventoDate, type AgendaEvento, type AgendaTipo, type AgendaTone } from "@/lib/agenda-types";
+import { toneChip } from "@/lib/palette";
 import { criarEvento, atualizarEvento, deletarEvento } from "@/lib/actions/agenda";
 import { AGENDA_EVENTO_TIPOS, AGENDA_RECORRENCIAS, DIAS_SEMANA, type AgendaRecorrencia } from "@/types/database";
 
@@ -243,8 +244,9 @@ function VistaMes({
 
 function ChipMini({ ev, onClick }: { ev: AgendaEvento; onClick: (ev: AgendaEvento) => void }) {
   const repetindo = ev.recorrencia && ev.recorrencia !== "none";
+  const cls = ev.colorTone ? toneChip[ev.colorTone] : toneClass[ev.tone];
   const inner = (
-    <div className={`text-[11px] px-1.5 py-0.5 rounded border truncate flex items-center gap-1 ${toneClass[ev.tone]}`}>
+    <div className={`text-[11px] px-1.5 py-0.5 rounded border truncate flex items-center gap-1 ${cls}`}>
       {ev.hasTime && <span className="font-mono opacity-80">{fmtHora(ev.data)}</span>}
       {repetindo && <Repeat size={9} className="opacity-70 shrink-0" />}
       <span className="truncate">{ev.titulo}</span>
@@ -348,8 +350,9 @@ function EventoChip({ ev, compacto = false, onClick }: {
 }) {
   const Icon = iconByTipo[ev.tipo];
   const repetindo = ev.recorrencia && ev.recorrencia !== "none";
+  const cls = ev.colorTone ? toneChip[ev.colorTone] : toneClass[ev.tone];
   const inner = (
-    <div className={`flex items-start gap-2 rounded-lg border px-2 py-1.5 transition hover:shadow-sm ${toneClass[ev.tone]}`}>
+    <div className={`flex items-start gap-2 rounded-lg border px-2 py-1.5 transition hover:shadow-sm ${cls}`}>
       <Icon size={compacto ? 12 : 14} className="mt-0.5 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className={`${compacto ? "text-[11px]" : "text-sm"} font-medium truncate flex items-center gap-1`}>

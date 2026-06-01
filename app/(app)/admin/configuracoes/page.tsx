@@ -1,10 +1,12 @@
 import { requireAdmin } from "@/lib/auth";
-import { getDefaults, salvarDefaults } from "@/lib/actions/settings";
+import { getDefaults, salvarDefaults, getCategoriaCores } from "@/lib/actions/settings";
 import { GlassCard, GlassButton, GlassInput, Label } from "@/components/ui/glass";
+import { CategoriaCoresForm } from "@/components/admin/CategoriaCoresForm";
 
 export default async function Page() {
   await requireAdmin();
   const defaults = await getDefaults();
+  const categoriaCores = await getCategoriaCores();
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -25,6 +27,16 @@ export default async function Page() {
           </div>
           <GlassButton type="submit">Salvar</GlassButton>
         </form>
+      </GlassCard>
+
+      <GlassCard>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-neutral-100">Cores dos tipos de tarefa</h2>
+          <p className="text-sm text-slate-500 dark:text-neutral-400">
+            Cor usada para diferenciar cada tipo no Kanban de tarefas e na Agenda.
+          </p>
+        </div>
+        <CategoriaCoresForm inicial={categoriaCores} />
       </GlassCard>
     </div>
   );

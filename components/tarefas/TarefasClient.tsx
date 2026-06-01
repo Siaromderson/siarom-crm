@@ -8,7 +8,11 @@ import { TarefaForm } from "./TarefaForm";
 import { TarefaDetailDrawer } from "./TarefaDetailDrawer";
 import { atualizarStatusTarefa, deletarTarefa } from "@/lib/actions/tasks";
 import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
-import { TASK_STATUSES, type Profile, type Project, type Task, type TaskStatus, type Prioridade } from "@/types/database";
+import { TASK_STATUSES, TASK_CATEGORIAS, type Profile, type Project, type Task, type TaskStatus, type Prioridade, type TaskCategoria } from "@/types/database";
+import { toneDot, toneColumn, toneBar, TASK_STATUS_TONE, type Tone } from "@/lib/palette";
+
+type CategoriaCores = Record<TaskCategoria, Tone>;
+const categoriaLabel = (c: TaskCategoria) => TASK_CATEGORIAS.find((x) => x.id === c)?.label ?? c;
 
 const toneByPrio: Record<Prioridade, "blue" | "amber" | "red" | "slate"> = {
   baixa: "slate", media: "blue", alta: "amber", urgente: "red",
@@ -63,12 +67,14 @@ function SortChip({ ativo, dir, onClick, children }: {
   );
 }
 
-function CardView({ t, dragging = false, overlay = false }: {
-  t: Task; dragging?: boolean; overlay?: boolean;
+function CardView({ t, cores, dragging = false, overlay = false }: {
+  t: Task; cores: CategoriaCores; dragging?: boolean; overlay?: boolean;
 }) {
   const desc = previewDescricao(t.descricao);
+  const tone = cores[t.categoria] ?? "slate";
   return (
-    <div className={`glass rounded-xl p-3 h-[104px] flex flex-col transition ${overlay ? "shadow-2xl rotate-1 cursor-grabbing ring-2 ring-emerald-400/60" : ""} ${dragging ? "opacity-40" : ""}`}>
+    <div className={`relative glass rounded-xl p-3 pl-3.5 h-[124px] flex flex-col transition overflow-hidden ${overlay ? "shadow-2xl rotate-1 cursor-grabbing ring-2 ring-emerald-400/60" : ""} ${dragging ? "opacity-40" : ""}`}>
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${toneBar[tone]}`} />
       <div className="flex justify-between items-start gap-2 shrink-0">
         <div className="font-medium text-sm line-clamp-1">{t.titulo}</div>
         <Badge tone={toneByPrio[t.prioridade]}>{t.prioridade}</Badge>
@@ -76,45 +82,52 @@ function CardView({ t, dragging = false, overlay = false }: {
       <div className="text-xs text-slate-400 mt-1.5 line-clamp-2 whitespace-pre-line flex-1">
         {desc || <span className="italic text-slate-300 dark:text-neutral-600">Sem descrição</span>}
       </div>
+      <div className="flex items-center gap-1.5 mt-1.5 shrink-0">
+        <span className={`w-2 h-2 rounded-full ${toneDot[tone]}`} />
+        <span className="text-[10px] uppercase tracking-wider text-slate-400">{categoriaLabel(t.categoria)}</span>
+      </div>
     </div>
   );
 }
 
-function Card({ t, onOpen }: { t: Task; onOpen: (t: Task) => void }) {
+function Card({ t, cores, onOpen }: { t: Task; cores: CategoriaCores; onOpen: (t: Task) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: t.id });
   return (
     <div ref={setNodeRef} {...listeners} {...attributes}
          onClick={(e) => { if (!isDragging) { e.stopPropagation(); onOpen(t); } }}
          className="cursor-grab active:cursor-grabbing">
-      <CardView t={t} dragging={isDragging} />
+      <CardView t={t} cores={cores} dragging={isDragging} />
     </div>
   );
 }
 
-function Column({ status, label, items, onOpen }: {
-  status: TaskStatus; label: string; items: Task[]; onOpen: (t: Task) => void;
+function Column({ status, label, items, cores, onOpen }: {
+  status: TaskStatus; label: string; items: Task[]; cores: CategoriaCores; onOpen: (t: Task) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
+  const tone = TASK_STATUS_TONE[status];
   return (
-    <div ref={setNodeRef} className={`min-w-[240px] flex-1 glass rounded-2xl p-3 flex flex-col gap-3 max-h-[calc(100vh-240px)] ${isOver ? "ring-2 ring-brand-400/60" : ""}`}>
-      <div className="flex items-center justify-between px-1 shrink-0">
-        <div className="text-sm font-semibold">{label}</div>
+    <div ref={setNodeRef} className={`min-w-[240px] flex-1 rounded-2xl border p-3 flex flex-col gap-3 max-h-[calc(100vh-240px)] transition ${isOver ? "ring-2 ring-emerald-400/60" : ""} ${toneColumn[tone]}`}>
+      <div className="flex items-center gap-2 px-1 shrink-0">
+        <span className={`w-1.5 h-1.5 rounded-full ${toneBar[tone]}`} />
+        <div className="text-sm font-semibold flex-1">{label}</div>
         <span className="text-xs text-slate-400">{items.length}</span>
       </div>
       <div className="flex flex-col gap-2 min-h-[40px] flex-1 overflow-y-auto pr-1 -mr-1">
-        {items.map((t) => <Card key={t.id} t={t} onOpen={onOpen} />)}
+        {items.map((t) => <Card key={t.id} t={t} cores={cores} onOpen={onOpen} />)}
       </div>
     </div>
   );
 }
 
 export function TarefasClient({
-  initial, projetos, usuarios, podeEscolherResponsavel,
+  initial, projetos, usuarios, podeEscolherResponsavel, categoriaCores,
 }: {
   initial: Task[];
   projetos: Pick<Project, "id" | "cliente_nome">[];
   usuarios: Pick<Profile, "id" | "nome">[];
   podeEscolherResponsavel: boolean;
+  categoriaCores: CategoriaCores;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"board" | "lista">("board");
@@ -189,7 +202,7 @@ export function TarefasClient({
           <SortChip ativo={sortBy === "prazo"} dir={sortDir} onClick={() => toggleSort("prazo")}>Prazo</SortChip>
           <SortChip ativo={sortBy === "prioridade"} dir={sortDir} onClick={() => toggleSort("prioridade")}>Prioridade</SortChip>
           <TarefaForm projetos={projetos} usuarios={usuarios} podeEscolherResponsavel={podeEscolherResponsavel}
-                      onCreated={(t) => setTasks((l) => [t, ...l])} />
+                      categoriaCores={categoriaCores} onCreated={(t) => setTasks((l) => [t, ...l])} />
         </div>
       </div>
 
@@ -199,11 +212,12 @@ export function TarefasClient({
             {TASK_STATUSES.map((s) => (
               <Column key={s.id} status={s.id} label={s.label}
                       items={tasksOrdenadas.filter((t) => t.status === s.id)}
+                      cores={categoriaCores}
                       onOpen={setOpen} />
             ))}
           </div>
           <DragOverlay>
-            {activeTask ? <CardView t={activeTask} overlay /> : null}
+            {activeTask ? <CardView t={activeTask} cores={categoriaCores} overlay /> : null}
           </DragOverlay>
         </DndContext>
       ) : (
@@ -213,6 +227,7 @@ export function TarefasClient({
             <thead className="bg-white/5 text-slate-300">
               <tr>
                 <th className="text-left px-4 py-2">Tarefa</th>
+                <th className="text-left px-4 py-2">Tipo</th>
                 <th className="text-left px-4 py-2">Projeto</th>
                 <th className="text-left px-4 py-2">Responsável</th>
                 <th className="text-left px-4 py-2">Prioridade</th>
@@ -225,6 +240,12 @@ export function TarefasClient({
               {tasksOrdenadas.map((t) => (
                 <tr key={t.id} className="border-t border-white/5 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition" onClick={() => setOpen(t)}>
                   <td className="px-4 py-2">{t.titulo}</td>
+                  <td className="px-4 py-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-neutral-400">
+                      <span className={`w-2 h-2 rounded-full ${toneDot[categoriaCores[t.categoria] ?? "slate"]}`} />
+                      {categoriaLabel(t.categoria)}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 text-slate-400">{t.project_id ? mapProj[t.project_id] : "—"}</td>
                   <td className="px-4 py-2 text-slate-400">{t.assignee_id ? mapResp[t.assignee_id] : "—"}</td>
                   <td className="px-4 py-2"><Badge tone={toneByPrio[t.prioridade]}>{t.prioridade}</Badge></td>
@@ -235,7 +256,7 @@ export function TarefasClient({
                   </td>
                 </tr>
               ))}
-              {tasksOrdenadas.length === 0 && <tr><td colSpan={7} className="text-center text-slate-400 py-6">Nenhuma tarefa.</td></tr>}
+              {tasksOrdenadas.length === 0 && <tr><td colSpan={8} className="text-center text-slate-400 py-6">Nenhuma tarefa.</td></tr>}
             </tbody>
           </table>
           </div>
@@ -250,6 +271,7 @@ export function TarefasClient({
         projetos={projetos}
         usuarios={usuarios}
         podeEscolherResponsavel={podeEscolherResponsavel}
+        categoriaCores={categoriaCores}
       />
     </div>
   );

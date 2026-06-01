@@ -1,4 +1,5 @@
 import type { Prioridade, TaskStatus } from "@/types/database";
+import type { Tone } from "@/lib/palette";
 
 export type AgendaTipo = "tarefa" | "entrega" | "testes_fim" | "reuniao" | "followup" | "evento";
 export type AgendaTone = "blue" | "amber" | "red" | "green" | "purple" | "slate";
@@ -11,6 +12,8 @@ export interface AgendaEvento {
   titulo: string;
   contexto: string | null;
   tone: AgendaTone;
+  /** Cor da categoria da tarefa (paleta). Quando presente, tem prioridade sobre `tone`. */
+  colorTone?: Tone;
   href: string | null;
   prioridade?: Prioridade;
   status?: TaskStatus;

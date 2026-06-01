@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { TarefasClient } from "@/components/tarefas/TarefasClient";
+import { getCategoriaCores } from "@/lib/actions/settings";
 import type { Profile, Project, Task } from "@/types/database";
 
 export default async function Page() {
@@ -22,6 +23,8 @@ export default async function Page() {
     .eq("ativo", true)
     .order("nome");
 
+  const categoriaCores = await getCategoriaCores();
+
   return (
     <div className="space-y-6">
       <div>
@@ -35,6 +38,7 @@ export default async function Page() {
         projetos={(projetos ?? []) as Pick<Project, "id" | "cliente_nome">[]}
         usuarios={(usuarios ?? []) as Pick<Profile, "id" | "nome">[]}
         podeEscolherResponsavel={profile.role === "admin"}
+        categoriaCores={categoriaCores}
       />
     </div>
   );

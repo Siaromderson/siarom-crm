@@ -19,6 +19,7 @@ export async function criarTarefa(formData: FormData) {
     prioridade: (formData.get("prioridade") as string) || "media",
     status: (formData.get("status") as TaskStatus) || "a_fazer",
     tipo: (formData.get("tipo") as string) || "manual",
+    categoria: (formData.get("categoria") as string) || "projeto",
     due_date: (formData.get("due_date") as string) || null,
   };
   if (!payload.titulo) return { error: "Título obrigatório." };
@@ -39,6 +40,7 @@ export async function atualizarTarefa(id: string, formData: FormData) {
     assignee_id: (formData.get("assignee_id") as string) || null,
     prioridade: (formData.get("prioridade") as string) || "media",
     status: (formData.get("status") as TaskStatus) || "a_fazer",
+    categoria: (formData.get("categoria") as string) || "projeto",
     due_date: (formData.get("due_date") as string) || null,
   };
   if (!patch.titulo) return { error: "Título obrigatório." };

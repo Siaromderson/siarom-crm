@@ -3,18 +3,19 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Drawer, GlassButton, GlassInput, GlassSelect, Label, Badge } from "@/components/ui/glass";
 import { SlashEditor } from "@/components/ui/SlashEditor";
-import { Calendar, User, Briefcase, Flag, ListChecks } from "lucide-react";
+import { Calendar, User, Briefcase, Flag, ListChecks, Tag } from "lucide-react";
 import { atualizarTarefa, deletarTarefa } from "@/lib/actions/tasks";
 import { createClient } from "@/lib/supabase/client";
 import { UploadDropzone, ArquivosList } from "@/components/arquivos/ArquivosList";
-import { TASK_STATUSES, type Profile, type Project, type ProjectFile, type Task, type Prioridade } from "@/types/database";
+import { TASK_STATUSES, TASK_CATEGORIAS, type Profile, type Project, type ProjectFile, type Task, type Prioridade, type TaskCategoria } from "@/types/database";
+import { toneDot, type Tone } from "@/lib/palette";
 
 const toneByPrio: Record<Prioridade, "blue" | "amber" | "red" | "slate"> = {
   baixa: "slate", media: "blue", alta: "amber", urgente: "red",
 };
 
 export function TarefaDetailDrawer({
-  tarefa, onClose, onDeleted, onUpdated, projetos, usuarios, podeEscolherResponsavel,
+  tarefa, onClose, onDeleted, onUpdated, projetos, usuarios, podeEscolherResponsavel, categoriaCores,
 }: {
   tarefa: Task | null;
   onClose: () => void;
@@ -23,6 +24,7 @@ export function TarefaDetailDrawer({
   projetos: Pick<Project, "id" | "cliente_nome">[];
   usuarios: Pick<Profile, "id" | "nome">[];
   podeEscolherResponsavel: boolean;
+  categoriaCores: Record<TaskCategoria, Tone>;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -34,6 +36,7 @@ export function TarefaDetailDrawer({
   const [assigneeId, setAssigneeId] = useState("");
   const [status, setStatus] = useState<Task["status"]>("a_fazer");
   const [prioridade, setPrioridade] = useState<Prioridade>("media");
+  const [categoria, setCategoria] = useState<TaskCategoria>("projeto");
   const [dueDate, setDueDate] = useState("");
   const [arquivos, setArquivos] = useState<ProjectFile[]>([]);
 
@@ -54,6 +57,7 @@ export function TarefaDetailDrawer({
     setAssigneeId(tarefa.assignee_id ?? "");
     setStatus(tarefa.status);
     setPrioridade(tarefa.prioridade);
+    setCategoria(tarefa.categoria ?? "projeto");
     setDueDate(tarefa.due_date ?? "");
     setErro(null);
     recarregarArquivos();
@@ -126,6 +130,16 @@ export function TarefaDetailDrawer({
           ) : (
             <input type="hidden" name="assignee_id" value={assigneeId} />
           )}
+        </div>
+
+        <div>
+          <Label htmlFor="categoria"><span className="inline-flex items-center gap-1.5"><Tag size={13} /> Tipo de tarefa</span></Label>
+          <div className="flex items-center gap-2">
+            <span className={`w-3 h-3 rounded-full shrink-0 ${toneDot[categoriaCores[categoria] ?? "slate"]}`} />
+            <GlassSelect id="categoria" name="categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as TaskCategoria)}>
+              {TASK_CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </GlassSelect>
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-3">

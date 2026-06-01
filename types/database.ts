@@ -137,6 +137,13 @@ export interface Project {
 
 export type TaskTipo = "manual" | "followup";
 
+export type TaskCategoria = "projeto" | "comunidade" | "gravacao";
+export const TASK_CATEGORIAS: { id: TaskCategoria; label: string }[] = [
+  { id: "projeto",    label: "Projeto" },
+  { id: "comunidade", label: "Comunidade" },
+  { id: "gravacao",   label: "Gravação de conteúdo" },
+];
+
 export interface Task {
   id: string;
   project_id: string | null;
@@ -146,6 +153,7 @@ export interface Task {
   status: TaskStatus;
   prioridade: Prioridade;
   tipo: TaskTipo;
+  categoria: TaskCategoria;
   assignee_id: string | null;
   due_date: string | null;
   created_at: string;

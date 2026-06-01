@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { GlassButton, GlassInput, GlassSelect, Label, Modal } from "@/components/ui/glass";
 import { SlashEditor } from "@/components/ui/SlashEditor";
 import { criarTarefa } from "@/lib/actions/tasks";
-import { TASK_STATUSES, type Profile, type Project, type Task } from "@/types/database";
+import { TASK_STATUSES, TASK_CATEGORIAS, type Profile, type Project, type Task, type TaskCategoria } from "@/types/database";
+import { toneDot, type Tone } from "@/lib/palette";
 
-export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel, onCreated }: {
+export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel, categoriaCores, onCreated }: {
   projetos: Pick<Project, "id" | "cliente_nome">[];
   usuarios: Pick<Profile, "id" | "nome">[];
   podeEscolherResponsavel: boolean;
+  categoriaCores: Record<TaskCategoria, Tone>;
   onCreated?: (task: Task) => void;
 }) {
   const router = useRouter();
@@ -17,6 +19,7 @@ export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel, onCrea
   const [erro, setErro] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [descricao, setDescricao] = useState("");
+  const [categoria, setCategoria] = useState<TaskCategoria>("projeto");
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,6 +31,7 @@ export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel, onCrea
       if (r?.task) onCreated?.(r.task as Task);
       setOpen(false);
       setDescricao("");
+      setCategoria("projeto");
       router.refresh();
     });
   };
@@ -47,6 +51,16 @@ export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel, onCrea
               <GlassSelect id="project_id" name="project_id" defaultValue="">
                 <option value="">— sem projeto —</option>
                 {projetos.map((p) => <option key={p.id} value={p.id}>{p.cliente_nome}</option>)}
+              </GlassSelect>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="categoria">Tipo de tarefa</Label>
+            <div className="flex items-center gap-2">
+              <span className={`w-3 h-3 rounded-full shrink-0 ${toneDot[categoriaCores[categoria] ?? "slate"]}`} />
+              <GlassSelect id="categoria" name="categoria" value={categoria}
+                           onChange={(e) => setCategoria(e.target.value as TaskCategoria)}>
+                {TASK_CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </GlassSelect>
             </div>
           </div>

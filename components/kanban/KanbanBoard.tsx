@@ -8,6 +8,7 @@ import { moverEtapa } from "@/lib/actions/projects";
 import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
 import { brl } from "@/lib/format";
 import { calcFaseTestes } from "@/lib/testes";
+import { toneColumn, toneBar, KANBAN_STAGE_TONE } from "@/lib/palette";
 
 function CardView({ p, doneCount, dragging = false, overlay = false }: { p: Project; doneCount: number; dragging?: boolean; overlay?: boolean }) {
   return (
@@ -56,12 +57,14 @@ function Column({ stage, label, items, onOpen, checklists }: {
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   const total = items.reduce((a, p) => a + Number(p.valor_total), 0);
+  const tone = KANBAN_STAGE_TONE[stage];
   return (
     <div ref={setNodeRef}
-         className={`min-w-[280px] flex-1 rounded-2xl p-3 flex flex-col gap-3 border transition max-h-[calc(100vh-240px)] ${isOver ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400" : "bg-slate-50/60 dark:bg-neutral-900/40 border-slate-200 dark:border-neutral-800"}`}>
+         className={`min-w-[280px] flex-1 rounded-2xl p-3 flex flex-col gap-3 border transition max-h-[calc(100vh-240px)] ${isOver ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400" : toneColumn[tone]}`}>
       <div className="px-1 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-slate-700 dark:text-neutral-200">{label}</div>
+        <div className="flex items-center gap-2">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${toneBar[tone]}`} />
+          <div className="text-sm font-semibold text-slate-700 dark:text-neutral-200 flex-1">{label}</div>
           <span className="text-xs bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-full px-2 py-0.5 text-slate-600 dark:text-neutral-300">{items.length}</span>
         </div>
         {items.length > 0 && (

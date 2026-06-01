@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AgendaEventDb, Cliente, Lead, Project, Task } from "@/types/database";
 import { parseEventoDate, type AgendaEvento, type AgendaTone } from "@/lib/agenda-types";
+import { getCategoriaCores } from "@/lib/actions/settings";
 
 const EVENTO_TONE: Record<AgendaEventDb["tipo"], AgendaTone> = {
   reuniao: "purple",
@@ -12,6 +13,7 @@ const EVENTO_TONE: Record<AgendaEventDb["tipo"], AgendaTone> = {
 export async function getAgendaEventos(opts: { roleAdmin: boolean; userId: string }): Promise<AgendaEvento[]> {
   const supabase = createClient();
   const out: AgendaEvento[] = [];
+  const categoriaCores = await getCategoriaCores();
 
   let taskQ = supabase
     .from("siarom_crm_tasks")
@@ -36,6 +38,7 @@ export async function getAgendaEventos(opts: { roleAdmin: boolean; userId: strin
       titulo: t.titulo,
       contexto: t.project_id ? projMap.get(t.project_id) ?? null : null,
       tone: t.prioridade === "urgente" ? "red" : t.prioridade === "alta" ? "amber" : "blue",
+      colorTone: categoriaCores[t.categoria] ?? undefined,
       href: "/tarefas",
       prioridade: t.prioridade,
       status: t.status,

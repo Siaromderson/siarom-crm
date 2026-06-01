@@ -10,6 +10,7 @@ import { atualizarStatusTarefa } from "@/lib/actions/tasks";
 import { marcarFollowupFeito } from "@/lib/actions/clientes";
 import { marcarFollowupLeadFeito } from "@/lib/actions/leads";
 import { useOptimisticAction } from "@/lib/hooks/useOptimisticAction";
+import { toneChip } from "@/lib/palette";
 import type { AgendaEvento, AgendaTipo, AgendaTone } from "@/lib/agenda-types";
 
 const iconByTipo: Record<AgendaTipo, typeof ListChecks> = {
@@ -99,7 +100,7 @@ export function AgendaHojeWidget({ eventos }: { eventos: AgendaEvento[] }) {
           const repetindo = ev.recorrencia && ev.recorrencia !== "none";
           const conteudo = (
             <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-neutral-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition bg-white dark:bg-neutral-900">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${toneClass[ev.tone]}`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${ev.colorTone ? toneChip[ev.colorTone] : toneClass[ev.tone]}`}>
                 <Icon size={18} />
               </div>
               <div className="flex-1 min-w-0">
