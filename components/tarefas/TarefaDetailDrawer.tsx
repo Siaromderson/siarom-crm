@@ -14,10 +14,12 @@ const toneByPrio: Record<Prioridade, "blue" | "amber" | "red" | "slate"> = {
 };
 
 export function TarefaDetailDrawer({
-  tarefa, onClose, projetos, usuarios, podeEscolherResponsavel,
+  tarefa, onClose, onDeleted, onUpdated, projetos, usuarios, podeEscolherResponsavel,
 }: {
   tarefa: Task | null;
   onClose: () => void;
+  onDeleted?: (id: string) => void;
+  onUpdated?: (task: Task) => void;
   projetos: Pick<Project, "id" | "cliente_nome">[];
   usuarios: Pick<Profile, "id" | "nome">[];
   podeEscolherResponsavel: boolean;
@@ -66,6 +68,7 @@ export function TarefaDetailDrawer({
     start(async () => {
       const r = await atualizarTarefa(tarefa.id, fd);
       if (r?.error) return setErro(r.error);
+      if (r?.task) onUpdated?.(r.task as Task);
       router.refresh();
       onClose();
     });
@@ -73,11 +76,13 @@ export function TarefaDetailDrawer({
 
   const remover = () => {
     if (!confirm("Excluir esta tarefa?")) return;
+    const id = tarefa.id;
+    onDeleted?.(id);   // remove da tela na hora
+    onClose();
     start(async () => {
-      const r = await deletarTarefa(tarefa.id);
+      const r = await deletarTarefa(id);
       if (r?.error) return setErro(r.error);
       router.refresh();
-      onClose();
     });
   };
 

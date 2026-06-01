@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp } from "lucide-react";
@@ -119,6 +119,9 @@ export function TarefasClient({
   const router = useRouter();
   const [view, setView] = useState<"board" | "lista">("board");
   const [tasks, setTasks] = useState(initial);
+  // Sincroniza com o servidor após router.refresh() (criar/excluir/editar),
+  // sem precisar recarregar a página manualmente.
+  useEffect(() => { setTasks(initial); }, [initial]);
   const [open, setOpen] = useState<Task | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("prazo");
@@ -185,7 +188,8 @@ export function TarefasClient({
           <span className="text-xs text-slate-500 dark:text-neutral-400">Ordenar por</span>
           <SortChip ativo={sortBy === "prazo"} dir={sortDir} onClick={() => toggleSort("prazo")}>Prazo</SortChip>
           <SortChip ativo={sortBy === "prioridade"} dir={sortDir} onClick={() => toggleSort("prioridade")}>Prioridade</SortChip>
-          <TarefaForm projetos={projetos} usuarios={usuarios} podeEscolherResponsavel={podeEscolherResponsavel} />
+          <TarefaForm projetos={projetos} usuarios={usuarios} podeEscolherResponsavel={podeEscolherResponsavel}
+                      onCreated={(t) => setTasks((l) => [t, ...l])} />
         </div>
       </div>
 
@@ -241,6 +245,8 @@ export function TarefasClient({
       <TarefaDetailDrawer
         tarefa={open}
         onClose={() => setOpen(null)}
+        onDeleted={(id) => setTasks((l) => l.filter((t) => t.id !== id))}
+        onUpdated={(t) => setTasks((l) => l.map((x) => (x.id === t.id ? t : x)))}
         projetos={projetos}
         usuarios={usuarios}
         podeEscolherResponsavel={podeEscolherResponsavel}

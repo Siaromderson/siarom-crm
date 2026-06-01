@@ -22,11 +22,11 @@ export async function criarTarefa(formData: FormData) {
     due_date: (formData.get("due_date") as string) || null,
   };
   if (!payload.titulo) return { error: "Título obrigatório." };
-  const { error } = await supabase.from("siarom_crm_tasks").insert(payload);
+  const { data, error } = await supabase.from("siarom_crm_tasks").insert(payload).select().single();
   if (error) return { error: error.message };
   revalidatePath("/tarefas");
   revalidatePath("/dashboard");
-  return { ok: true };
+  return { ok: true, task: data };
 }
 
 export async function atualizarTarefa(id: string, formData: FormData) {
@@ -42,11 +42,11 @@ export async function atualizarTarefa(id: string, formData: FormData) {
     due_date: (formData.get("due_date") as string) || null,
   };
   if (!patch.titulo) return { error: "Título obrigatório." };
-  const { error } = await supabase.from("siarom_crm_tasks").update(patch).eq("id", id);
+  const { data, error } = await supabase.from("siarom_crm_tasks").update(patch).eq("id", id).select().single();
   if (error) return { error: error.message };
   revalidatePath("/tarefas");
   revalidatePath("/dashboard");
-  return { ok: true };
+  return { ok: true, task: data };
 }
 
 export async function atualizarStatusTarefa(id: string, status: TaskStatus) {

@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import { GlassButton, GlassInput, GlassSelect, Label, Modal } from "@/components/ui/glass";
 import { SlashEditor } from "@/components/ui/SlashEditor";
 import { criarTarefa } from "@/lib/actions/tasks";
-import { TASK_STATUSES, type Profile, type Project } from "@/types/database";
+import { TASK_STATUSES, type Profile, type Project, type Task } from "@/types/database";
 
-export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel }: {
+export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel, onCreated }: {
   projetos: Pick<Project, "id" | "cliente_nome">[];
   usuarios: Pick<Profile, "id" | "nome">[];
   podeEscolherResponsavel: boolean;
+  onCreated?: (task: Task) => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -24,6 +25,7 @@ export function TarefaForm({ projetos, usuarios, podeEscolherResponsavel }: {
     start(async () => {
       const r = await criarTarefa(fd);
       if (r?.error) return setErro(r.error);
+      if (r?.task) onCreated?.(r.task as Task);
       setOpen(false);
       setDescricao("");
       router.refresh();
