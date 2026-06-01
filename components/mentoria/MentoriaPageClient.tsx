@@ -47,9 +47,9 @@ export function MentoriaPageClient({ mentorias, aulasPorMentoria, mentorados }: 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold title-grad">Mentoria</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold title-grad">Mentoria</h1>
           <p className="text-sm text-slate-500 dark:text-neutral-400">{mentorias.length} mentoria(s)</p>
         </div>
         <GlassButton onClick={() => setNewOpen(true)}>+ Nova mentoria</GlassButton>

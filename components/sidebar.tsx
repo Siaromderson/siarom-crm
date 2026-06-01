@@ -2,10 +2,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Calculator, Briefcase, ListChecks, CalendarDays,
   Users, Settings, LogOut, Target, UserCircle2, FileSignature, Receipt, GraduationCap,
-  type LucideIcon,
+  Menu, X, type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/format";
@@ -41,6 +42,17 @@ export function Sidebar({ nome, role }: { nome: string; role: Role }) {
   const pathname = usePathname();
   const router = useRouter();
   const items = nav(role);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Fecha o menu mobile ao navegar
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  // Trava o scroll do body enquanto o drawer estiver aberto
+  useEffect(() => {
+    if (mobileOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   const sair = async () => {
     const supabase = createClient();
@@ -49,8 +61,9 @@ export function Sidebar({ nome, role }: { nome: string; role: Role }) {
     router.refresh();
   };
 
-  return (
-    <aside className="w-60 shrink-0 bg-white dark:bg-neutral-950 border-r border-slate-200 dark:border-neutral-800 flex flex-col gap-1 h-screen sticky top-0 p-4">
+  // Conteúdo compartilhado entre o sidebar desktop e o drawer mobile
+  const content = (
+    <>
       <div className="px-2 pb-4 border-b border-slate-100 dark:border-neutral-800">
         <div className="flex items-center gap-3">
           <Image src="/logo.png" alt="SIAROM" width={42} height={28} priority unoptimized />
@@ -94,6 +107,48 @@ export function Sidebar({ nome, role }: { nome: string; role: Role }) {
         </button>
         <ThemeToggle />
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Sidebar fixo (desktop) */}
+      <aside className="hidden lg:flex w-60 shrink-0 bg-white dark:bg-neutral-950 border-r border-slate-200 dark:border-neutral-800 flex-col gap-1 h-screen sticky top-0 p-4">
+        {content}
+      </aside>
+
+      {/* Barra superior (mobile) */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 flex items-center gap-3 px-4 bg-white/95 dark:bg-neutral-950/95 backdrop-blur border-b border-slate-200 dark:border-neutral-800">
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Abrir menu"
+          className="p-2 -ml-2 rounded-lg text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-900 transition"
+        >
+          <Menu size={22} />
+        </button>
+        <Image src="/logo.png" alt="SIAROM" width={34} height={22} priority unoptimized />
+        <span className="font-semibold text-slate-800 dark:text-neutral-100">SIAROM CRM</span>
+      </header>
+
+      {/* Drawer + overlay (mobile) */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div
+            className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="relative w-72 max-w-[82%] h-full bg-white dark:bg-neutral-950 border-r border-slate-200 dark:border-neutral-800 flex flex-col gap-1 p-4 shadow-2xl animate-[slideInLeft_.25s_cubic-bezier(.2,.8,.2,1)]">
+            <button
+              onClick={() => setMobileOpen(false)}
+              aria-label="Fechar menu"
+              className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-900 transition"
+            >
+              <X size={18} />
+            </button>
+            {content}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

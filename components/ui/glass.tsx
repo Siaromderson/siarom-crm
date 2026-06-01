@@ -135,8 +135,8 @@ export function Modal({ open, onClose, title, children, size = "md" }: {
   const widths = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-5xl" }[size];
 
   return (
-    <div className="modal-backdrop flex items-center justify-center p-4" onClick={onClose}>
-      <div className={cn("modal-panel card w-full p-6", widths)} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className={cn("modal-panel card w-full p-6 max-h-[90vh] overflow-y-auto", widths)} onClick={(e) => e.stopPropagation()}>
         {(title || true) && (
           <div className="flex items-center justify-between mb-4">
             <div className="text-lg font-semibold text-slate-800 dark:text-neutral-100">{title}</div>

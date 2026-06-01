@@ -204,7 +204,8 @@ export function TarefasClient({
         </DndContext>
       ) : (
         <GlassCard className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-white/5 text-slate-300">
               <tr>
                 <th className="text-left px-4 py-2">Tarefa</th>
@@ -233,6 +234,7 @@ export function TarefasClient({
               {tasksOrdenadas.length === 0 && <tr><td colSpan={7} className="text-center text-slate-400 py-6">Nenhuma tarefa.</td></tr>}
             </tbody>
           </table>
+          </div>
         </GlassCard>
       )}
 

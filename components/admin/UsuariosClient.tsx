@@ -41,7 +41,7 @@ export function UsuariosClient({ usuarios }: { usuarios: Profile[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold title-grad">Usuários</h1>
         <GlassButton onClick={() => setOpen(true)}>+ Novo usuário</GlassButton>
       </div>
@@ -67,7 +67,8 @@ export function UsuariosClient({ usuarios }: { usuarios: Profile[] }) {
       </Modal>
 
       <GlassCard className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-white/5 text-slate-300">
             <tr>
               <th className="text-left px-4 py-2">Nome</th>
@@ -106,6 +107,7 @@ export function UsuariosClient({ usuarios }: { usuarios: Profile[] }) {
             ))}
           </tbody>
         </table>
+        </div>
       </GlassCard>
     </div>
   );

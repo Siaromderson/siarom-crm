@@ -156,9 +156,9 @@ export function LeadsBoard({ leads, projetosByCliente = {} }: { leads: Lead[]; p
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-3xl font-bold title-grad">Leads</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold title-grad">Leads</h1>
           <p className="text-sm text-slate-500 dark:text-neutral-400">{leads.length} lead(s) no funil</p>
         </div>
         <GlassButton onClick={() => setNewOpen(true)}>+ Novo lead</GlassButton>
